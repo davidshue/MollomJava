@@ -35,6 +35,7 @@ import com.mollom.client.datastructures.URLBlacklistEntry;
  * 
  * @author Thomas Meire
  */
+@Deprecated
 public class MollomURLBlacklist extends Mollom {
 
 	public MollomURLBlacklist(String publicKey, String privateKey) {

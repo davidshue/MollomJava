@@ -39,6 +39,7 @@ import redstone.xmlrpc.XmlRpcFault;
  * @see MollomCommunicator
  * @author Thomas Meire
  */
+@Deprecated
 public class XMLRPCCommunicator implements MollomCommunicator {
 
 	public <T> T execute(MollomRequest request, Class<T> c) throws MollomCommunicationException {

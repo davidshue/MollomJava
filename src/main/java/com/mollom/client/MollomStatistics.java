@@ -37,6 +37,7 @@ import com.mollom.client.core.MollomRequest;
  *
  * @author Thomas Meire
  */
+@Deprecated
 public class MollomStatistics extends Mollom {
 
 	public MollomStatistics(String publicKey, String privateKey) {
