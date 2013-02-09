@@ -25,7 +25,6 @@
  */
 package com.mollom.client;
 
-import com.mollom.client.core.MollomRequest;
 import com.mollom.client.datastructures.KeySet;
 import javax.xml.bind.annotation.XmlRootElement;
 
@@ -41,7 +40,11 @@ import javax.xml.bind.annotation.XmlRootElement;
 public class MollomReseller extends Mollom {
 
 	public MollomReseller(String publicKey, String privateKey) {
-		super (publicKey, privateKey);
+		super (publicKey, privateKey, false);
+	}
+
+	public MollomReseller(String publicKey, String privateKey, boolean testing) {
+		super (publicKey, privateKey, testing);
 	}
 
 	/**
@@ -57,6 +60,7 @@ public class MollomReseller extends Mollom {
 		return invoke(createNewRequest("listSites"), String[].class);
 	}*/
 
+  /*
 	private void infoToRequest(MollomRequest request, SiteInfo info) throws Exception {
 		String type = info.type;
 		if (!type.equals("customer") && !type.equals("company") && !type.equals("personal") && !type.equals("non-profit")) {
@@ -70,7 +74,7 @@ public class MollomReseller extends Mollom {
 		request.addParameter("testing", info.testing);
 		request.addParameter("language", info.language);
 		request.addParameter("type", info.type);
-	}
+	}*/
 
 	/**
 	 * Create a new site. All information to create the new site is encapsulated

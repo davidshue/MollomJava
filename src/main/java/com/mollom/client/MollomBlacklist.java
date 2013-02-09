@@ -81,15 +81,19 @@ public class MollomBlacklist extends Mollom {
     }
   };
 
+	public MollomBlacklist(String publicKey, String privateKey) {
+		super (publicKey, privateKey, false);
+	}
+
+	public MollomBlacklist(String publicKey, String privateKey, boolean testing) {
+		super (publicKey, privateKey, testing);
+	}
+
   private void add (MultivaluedMap<String, String> params, String name, Context value) {
     if (value != null) {
       params.putSingle(name, value.toString());
     }
   }
-
-	public MollomBlacklist(String publicKey, String privateKey) {
-		super (publicKey, privateKey);
-	}
 
 	/**
 	 * Add a text entry to the blacklist for this keypair

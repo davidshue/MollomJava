@@ -40,7 +40,11 @@ import javax.ws.rs.core.MultivaluedMap;
 public class MollomClient extends Mollom {
 
   public MollomClient(String publicKey, String privateKey) {
-    super(publicKey, privateKey);
+    super(publicKey, privateKey, false);
+  }
+
+  public MollomClient(String publicKey, String privateKey, boolean testing) {
+    super(publicKey, privateKey, testing);
   }
 
   /**
@@ -83,8 +87,10 @@ public class MollomClient extends Mollom {
     add(request, "honeypot", parameters.honeypot);
 
     // set the processing parameters
-    for (String check : parameters.checks) {
-      add(request, "checks", check);
+    if (parameters.checks != null) {
+      for (ContentCheck check : parameters.checks) {
+        add(request, "checks", check);
+      }
     }
     add(request, "strictness", parameters.strictness);
 
@@ -116,6 +122,31 @@ public class MollomClient extends Mollom {
   }
 
   /**
+   * Get an image captcha for a new session. All images will be send over http.
+   *
+   * @see http://mollom.com/api/getImageCaptcha
+   *
+   * @return a couple with an url for the captcha and a new session id
+   * @throws Exception when something goes wrong while contacting Mollom
+   */
+  public GetCaptchaResponse getImageCaptcha() throws Exception {
+    return getCaptcha("image", null, false);
+  }
+
+  /**
+   * Get an image captcha for a new session. All images will be send over http.
+   *
+   * @see http://mollom.com/api/getImageCaptcha
+   *
+   * @param useSSL boolean to indicating if we need to use ssl to serve the captcha
+   * @return a couple with an url for the captcha and a new session id
+   * @throws Exception when something goes wrong while contacting Mollom
+   */
+  public GetCaptchaResponse getImageCaptcha(boolean useSSL) throws Exception {
+    return getCaptcha("image", null, useSSL);
+  }
+
+  /**
    * Get an image captcha for the provided session. All images will be send over http.
    *
    * @see http://mollom.com/api/getImageCaptcha
@@ -138,6 +169,7 @@ public class MollomClient extends Mollom {
    * @see http://mollom.com/api/getImageCaptcha
    *
    * @param sessionID the sessionid of the message
+   * @param useSSL boolean to indicating if we need to use ssl to serve the captcha
    * @return a couple with an url for the captcha and a new session id
    * @throws Exception when something goes wrong while contacting Mollom
    */
@@ -175,7 +207,38 @@ public class MollomClient extends Mollom {
    * @throws Exception when something goes wrong while contacting Mollom
    */
   public GetCaptchaResponse getAudioCaptcha(String sessionID, boolean useSSL) throws Exception {
-    return getCaptcha("Audio", sessionID, useSSL);
+    return getCaptcha("audio", sessionID, useSSL);
+  }
+
+  /**
+   * Get an audio captcha for a new session.
+   * The captcha will always be send over plain http.
+   *
+   * @see http://mollom.com/api/getAudioCaptcha
+   *
+   * @return a couple with an url for the captcha and a new session id
+   * @throws Exception when something goes wrong while contacting Mollom
+   */
+  public GetCaptchaResponse getAudioCaptcha() throws Exception {
+    return getCaptcha("audio", null, false);
+  }
+
+  /**
+   * Get an audio captcha for a new session.
+   * The captcha will always be send over plain http.
+   *
+   * NOTE: The value of the useSSL parameter is only taken into account for
+   * 'Mollom Plus' and 'Mollom Premium' users. Captcha's for 'Mollom Free'
+   * users will always be send over plain http.
+   *
+   * @see http://mollom.com/api/getAudioCaptcha
+   *
+   * @param useSSL boolean to indicating if we need to use ssl to serve the captcha
+   * @return a couple with an url for the captcha and a new session id
+   * @throws Exception when something goes wrong while contacting Mollom
+   */
+  public GetCaptchaResponse getAudioCaptcha(boolean useSSL) throws Exception {
+    return getCaptcha("audio", null, useSSL);
   }
 
   /**

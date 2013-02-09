@@ -25,6 +25,7 @@
  */
 package com.mollom.client.datastructures;
 
+import com.mollom.client.MollomClient;
 import javax.xml.bind.annotation.XmlRootElement;
 
 /**
@@ -65,7 +66,7 @@ public class CheckContentRequest {
   public String[] classifiers;
 
   // specify what checks need to be executed
-  public String[] checks;
+  public MollomClient.ContentCheck[] checks;
 
   // specify how strict mollom needs to be on classifying content
   public Strictness strictness;

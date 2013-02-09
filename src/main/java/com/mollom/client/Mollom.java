@@ -52,22 +52,22 @@ abstract class Mollom {
   private static final Logger LOGGER = Logger.getLogger("com.mollom.client");
 
   /**
-   * The REST endpoint for production machines
+   * The REST endpoint for production machines.
    */
   private static final String PRODUCTION_ENDPOINT = "http://rest.mollom.com/";
 
   /**
-   * The REST endpoint for testing machines
+   * The REST endpoint for testing machines.
    */
   private static final String TESTING_ENDPOINT = "http://dev.mollom.com/";
 
   /**
-   * The version of the REST protocol
+   * The version of the REST protocol.
    */
   private static final String VERSION = "v1";
 
   /**
-   *
+   * The number of time to retry the request before bailing out.
    */
   private static final int RETRIES = 2;
 
@@ -76,10 +76,14 @@ abstract class Mollom {
    */
   private static final Client client = Client.create();
 
-  /** The public key that needs to be used in this instance */
+  /**
+   * The public key that needs to be used in this instance
+   */
   protected final String publicKey;
 
-  /** The private key that needs to be used in this instance */
+  /**
+   * The private key that needs to be used in this instance
+   */
   private final String privateKey;
 
   private WebResource resource;
@@ -87,10 +91,14 @@ abstract class Mollom {
   /**
    * Create a new Mollom instance for the specified public and private key.
    *
+   * When the testing mode is true, dev.mollom.com will be used as endpoint
+   * instead of rest.mollom.com See http://mollom.com/api#api-test
+   *
    * @param publicKey		the public key for this user
    * @param privateKey	the private key for this user
+   * @param testing     set the testing mode
    */
-  public Mollom(String publicKey, String privateKey) {
+  public Mollom(String publicKey, String privateKey, boolean testing) {
     this.publicKey = publicKey;
     this.privateKey = privateKey;
 
@@ -103,8 +111,10 @@ abstract class Mollom {
 
     ClientFilter oauth = new OAuthClientFilter(client.getProviders(), params, secrets);
 
+    String endpoint = !testing ? PRODUCTION_ENDPOINT : TESTING_ENDPOINT;
+
     // setup the web resource & add the oauth filter
-    resource = client.resource(PRODUCTION_ENDPOINT).path(VERSION);
+    resource = client.resource(endpoint).path(VERSION);
     resource.addFilter(oauth);
   }
 
