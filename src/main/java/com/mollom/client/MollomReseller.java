@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010, Mollom
+ * Copyright (c) 2010-2012 Mollom
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,10 +44,6 @@ public class MollomReseller extends Mollom {
 		super (publicKey, privateKey);
 	}
 
-	public MollomReseller(Protocol protocol, String publicKey, String privateKey) {
-		super(protocol, publicKey, privateKey);
-	}
-
 	/**
 	 * Get a list of all sites which are managed by this key pair. The sites are
 	 * identified by their public key.
@@ -56,10 +52,10 @@ public class MollomReseller extends Mollom {
 	 *
 	 * @return a list of public keys
 	 * @throws Exception when something goes wrong while contacting Mollom
-	 */
+	 *
 	public String[] list() throws Exception {
 		return invoke(createNewRequest("listSites"), String[].class);
-	}
+	}*/
 
 	private void infoToRequest(MollomRequest request, SiteInfo info) throws Exception {
 		String type = info.type;
@@ -86,14 +82,14 @@ public class MollomReseller extends Mollom {
 	 * @param info an object with all information about the site
 	 * @return a SiteInfo object containing the keypair along with the other info.
 	 * @throws Exception when something goes wrong while contacting Mollom
-	 */
+	 *
 	public SiteInfo create(SiteInfo info) throws Exception {
 		MollomRequest request = createNewRequest("createSite");
 		infoToRequest(request, info);
 
 		info.setKeys(invoke(request, KeySet.class));
 		return info;
-	}
+	}*/
 
 	/**
 	 * Get all information for a site managed by this keypair. The site is
@@ -104,14 +100,14 @@ public class MollomReseller extends Mollom {
 	 * @param pubkey the public key for the site
 	 * @return a SiteInfo object with all config options for the site
 	 * @throws Exception when something goes wrong while contacting Mollom
-	 */
+	 *
 	public SiteInfo get(String pubkey) throws Exception {
 		MollomRequest request = createNewRequest("getSite");
 
 		request.addParameter("client_key", pubkey);
 
 		return invoke(request, SiteInfo.class);
-	}
+	}*/
 
 	/**
 	 * Update the information about a site managed by this keypair. To be able
@@ -133,13 +129,13 @@ public class MollomReseller extends Mollom {
 	 * @param info An object containing the updated information.
 	 * @return true if the update succeeded, else false
 	 * @throws Exception when something goes wrong while contacting Mollom
-	 */
+	 *
 	public boolean update(SiteInfo info) throws Exception {
 		MollomRequest request = createNewRequest("updateSite");
 		infoToRequest(request, info);
 
 		return invoke(request, Boolean.class);
-	}
+	}*/
 
 	/**
 	 * Delete the site with the specified public key. Be sure about what you're
@@ -150,13 +146,13 @@ public class MollomReseller extends Mollom {
 	 * @param pubkey the public key for the site to delete
 	 * @return true if the deletion succeeded, else false.
 	 * @throws Exception when something goes wrong while contacting Mollom
-	 */
+	 *
 	public boolean delete(String pubkey) throws Exception {
 		MollomRequest request = createNewRequest("deleteSite");
 		request.addParameter("client_key", pubkey);
 
 		return invoke(request, Boolean.class);
-	}
+	}*/
 
 	/**
 	 * A container class that holds all information about a site. It's used to

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010, Mollom
+ * Copyright (c) 2010-2012 Mollom
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -23,44 +23,52 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package com.mollom.client.core;
+package com.mollom.client.datastructures;
+
+import com.mollom.client.MollomBlacklist.Context;
+import com.mollom.client.MollomBlacklist.Match;
+import com.mollom.client.MollomBlacklist.Reason;
+import javax.xml.bind.annotation.XmlRootElement;
 
 /**
- * Exception class to hold the Mollom error code.
- * Known error codes:
- *	<dl>
- *		<dt>1000</dt><dd>Internal error</dd>
- *		<dt>1100</dt><dd>Refresh serverlist</dd>
- *		<dt>1200</dt><dd>Server busy</dd>
- *	</dl>
- *
- * @see http://mollom.com/api/error-handling
+ * Class that is used to communicate with Mollom about text blacklists.
+ * 
+ * @see MollomBlacklist
  * @author Thomas Meire
  */
-public class MollomCommunicationException extends Exception {
+@XmlRootElement
+public class BlacklistEntry {
 
-	/** The error code */
-	public int code;
-
+  /** 
+   * The blacklist id.
+   */
+  public String id;
 	/**
-	 * Create a new MollomCommunicationException
-	 *
-	 * @param code the code from the exception
-	 * @param parent the exception that triggered this exception
-	 */
-	public MollomCommunicationException (int code, Exception parent) {
-		super(parent);
-		this.code = code;
-	}
-
+   * The blacklisted text.
+   */
+	public String text;
 	/**
-	 * Create a new MollomCommunicationException
-	 *
-	 * @param code the code from the exception
-	 * @param parent the exception that triggered this exception
-	 */
-	public MollomCommunicationException (int code, String message) {
-		super(message);
-		this.code = code;
-	}
+   * The context in which it is blacklisted.
+   */
+	public Context context;
+	/**
+   * The reason why it is blacklisted.
+   */
+	public Reason reason;
+	/**
+   * The way this blacklisted text must be matched.
+   */
+	public Match match;
+	/**
+   * A timestamp indicating when this text was added to the blacklist.
+   */
+	public String created;
+  /**
+   * The status of this entry.
+   */
+  public boolean status;
+  /**
+   * A note about this blacklist entry.
+   */
+  public String note;
 }

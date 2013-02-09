@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010, Mollom
+ * Copyright (c) 2010-2012 Mollom
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,8 +25,9 @@
  */
 package com.mollom.client;
 
-import com.mollom.client.core.MollomRequest;
-import com.mollom.client.datastructures.TextBlacklistEntry;
+import com.mollom.client.datastructures.BlacklistEntry;
+import com.sun.jersey.core.util.MultivaluedMapImpl;
+import javax.ws.rs.core.MultivaluedMap;
 
 /**
  * MollomTextBlacklist provides an interface for a sites text blacklist. Text
@@ -39,84 +40,55 @@ import com.mollom.client.datastructures.TextBlacklistEntry;
  *
  * @author Thomas Meire
  */
-public class MollomTextBlacklist extends Mollom {
+public class MollomBlacklist extends Mollom {
 
-	public MollomTextBlacklist(String publicKey, String privateKey) {
-		super (publicKey, privateKey);
-	}
+	/**
+	 * An enum indicating the reason why a text entry is blocked
+	 */
+	public static enum Reason {
 
-	public MollomTextBlacklist (Protocol protocol, String publicKey, String privateKey) {
-		super (protocol, publicKey, privateKey);
+		SPAM, PROFANITY, QUALITY, UNWANTED
+	};
+
+	/**
+	 * An enum indicating how a text entry should be matched
+	 */
+	public static enum Match {
+		EXACT, CONTAINS
 	}
 
 	/**
 	 * An enum indicating in which context a text entry is applicable
 	 */
-	public enum Context {
+	public static enum Context {
 
-		EVERYTHING, LINKS, AUTHOR
-	};
+		ALL_FIELDS("allFields"), LINKS("links"),
+    AUTHOR_NAME("authorName"),
+    AUTHOR_MAIL("authorMail"),
+    AUTHOR_ID("authorId"),
+    AUTHOR_IP("authorIp"),
+    POST_TITLE("postTitle");
 
-	private String contextToString(Context context) {
-		switch (context) {
-			case AUTHOR:
-				return "author";
-			case LINKS:
-				return "links";
-			case EVERYTHING:
-			default:
-				return "everything";
-		}
-	}
+    private String value;
 
-	/**
-	 * An enum indicating the reason why a text entry is blocked
-	 */
-	public enum Reason {
+    Context (String value) {
+      this.value = value;
+    }
 
-		SPAM, PROFANITY, LOW_QUALITY, UNWANTED
-	};
+    @Override
+    public String toString() {
+      return value;
+    }
+  };
 
-	private String reasonToString(Reason reason) {
-		switch (reason) {
-			case LOW_QUALITY:
-				return "low-quality";
-			case PROFANITY:
-				return "profanity";
-			case SPAM:
-				return "spam";
-			case UNWANTED:
-			default:
-				return "unwanted";
-		}
-	}
+  private void add (MultivaluedMap<String, String> params, String name, Context value) {
+    if (value != null) {
+      params.putSingle(name, value.toString());
+    }
+  }
 
-	/**
-	 * An enum indicating how a text entry should be matched
-	 */
-	public enum Match {
-		EXACT, CONTAINS
-	}
-
-	private String matchToString (Match match) {
-		switch (match) {
-			case EXACT:
-				return "exact";
-			case CONTAINS:
-			default:
-				return "contains";
-		}
-	}
-
-	private void doCall(String method, TextBlacklistEntry entry) throws Exception {
-		MollomRequest request = createNewRequest(method);
-
-		request.addParameter("text", entry.text);
-		request.addParameter("context", contextToString(entry.context));
-		request.addParameter("match", matchToString(entry.match));
-		request.addParameter("reason", reasonToString(entry.reason));
-
-		invoke(request, Boolean.class);
+	public MollomBlacklist(String publicKey, String privateKey) {
+		super (publicKey, privateKey);
 	}
 
 	/**
@@ -124,11 +96,18 @@ public class MollomTextBlacklist extends Mollom {
 	 *
 	 * @see http://mollom.com/api/addBlacklistText
 	 *
-	 * @param TextBlacklistEntry the entry to add to the blacklist
+	 * @param entry the entry to add to the blacklist
 	 * @throws Exception when something goes wrong while contacting Mollom
 	 */
-	public void add(TextBlacklistEntry TextBlacklistEntry) throws Exception {
-		doCall("addBlacklistText", TextBlacklistEntry);
+	public BlacklistEntry add(BlacklistEntry entry) throws Exception {
+    MultivaluedMap<String, String> request = new MultivaluedMapImpl();
+
+		add(request, "text",    entry.text);
+		add(request, "context", entry.context);
+		add(request, "match",   entry.match);
+		add(request, "reason",  entry.reason);
+
+		return invoke("POST", "/blacklist/" + publicKey, request, BlacklistEntry.class);
 	}
 
 	/**
@@ -136,11 +115,11 @@ public class MollomTextBlacklist extends Mollom {
 	 *
 	 * @see http://mollom.com/api/removeBlacklistText
 	 *
-	 * @param TextBlacklistEntry the entry to remove from the blacklist
+	 * @param entry the entry to remove from the blacklist
 	 * @throws Exception when something goes wrong while contacting Mollom
 	 */
-	public void remove(TextBlacklistEntry TextBlacklistEntry) throws Exception {
-		doCall("removeBlacklistText", TextBlacklistEntry);
+	public void remove(BlacklistEntry entry) throws Exception {
+    invoke("POST", "/blacklist/" + publicKey + "/" + entry.id + "/delete", new MultivaluedMapImpl(), null);
 	}
 
 	/**
@@ -151,7 +130,7 @@ public class MollomTextBlacklist extends Mollom {
 	 * @return a list of all text entries
 	 * @throws Exception when something goes wrong while contacting Mollom
 	 */
-	public TextBlacklistEntry[] list() throws Exception {
-		return invoke (createNewRequest("listBlacklistText"), TextBlacklistEntry[].class);
+	public BlacklistEntry[] list() throws Exception {
+		return invoke("GET" ,"/blacklist/" + publicKey, new MultivaluedMapImpl(), BlacklistEntry[].class);
 	}
 }

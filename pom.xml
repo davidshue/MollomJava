@@ -22,9 +22,21 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.kohsuke.redstone</groupId>
-      <artifactId>redstone</artifactId>
-      <version>1.1.1</version>
+      <groupId>com.sun.jersey</groupId>
+      <artifactId>jersey-client</artifactId>
+      <version>1.16</version>
+      <type>jar</type>
+    </dependency>
+    <dependency>
+      <groupId>com.sun.jersey.contribs.jersey-oauth</groupId>
+      <artifactId>oauth-signature</artifactId>
+      <version>1.16</version>
+      <type>jar</type>
+    </dependency>
+    <dependency>
+      <groupId>com.sun.jersey.contribs.jersey-oauth</groupId>
+      <artifactId>oauth-client</artifactId>
+      <version>1.16</version>
       <type>jar</type>
     </dependency>
   </dependencies>
