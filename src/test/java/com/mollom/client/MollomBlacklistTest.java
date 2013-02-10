@@ -1,3 +1,27 @@
+/**
+ * Copyright (c) 2010-2012 Mollom. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *   * Redistributions of source code must retain the above copyright notice,
+ *     this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above copyright notice,
+ *     this list of conditions and the following disclaimer in the documentation
+ *     and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 package com.mollom.client;
 
 import com.mollom.client.datastructures.BlacklistEntry;
@@ -131,96 +155,95 @@ public class MollomBlacklistTest extends BaseMollomTest {
       fail("Exception was thrown for optional match");
     }
   }
-
   /**
    * Test of all methods, of class MollomBlacklist.
    *
-	@Test
-	public void testProfanity() throws Exception {
-    CheckContentResponse response;
+   @Test
+   public void testProfanity() throws Exception {
+   CheckContentResponse response;
 
-    // Use key which is not in developer mode:
-    MollomClient client = new MollomClient("954b488186222a25496eac28d09f0239", "ff7de1635189cbe5772052977af29755");
-    MollomBlacklist blacklist = new MollomBlacklist("954b488186222a25496eac28d09f0239", "ff7de1635189cbe5772052977af29755");
+   // Use key which is not in developer mode:
+   MollomClient client = new MollomClient("954b488186222a25496eac28d09f0239", "ff7de1635189cbe5772052977af29755");
+   MollomBlacklist blacklist = new MollomBlacklist("954b488186222a25496eac28d09f0239", "ff7de1635189cbe5772052977af29755");
 
-    CheckContentRequest profanityRequest = new CheckContentRequest();
-    profanityRequest.postBody = "foobar";
+   CheckContentRequest profanityRequest = new CheckContentRequest();
+   profanityRequest.postBody = "foobar";
 
-    CheckContentRequest request = new CheckContentRequest();
-    request.checks = new ContentCheck[]{ ContentCheck.PROFANITY };
-    request.postBody = "foobar";
+   CheckContentRequest request = new CheckContentRequest();
+   request.checks = new ContentCheck[]{ ContentCheck.PROFANITY };
+   request.postBody = "foobar";
 
-    // Test standard blacklist:
-    response = client.checkContent(profanityRequest);
-    assertTrue(response.profanity == 0);
+   // Test standard blacklist:
+   response = client.checkContent(profanityRequest);
+   assertTrue(response.profanity == 0);
 
-    // Profanity is off by default:
-    request.postBody = "nigger";
+   // Profanity is off by default:
+   request.postBody = "nigger";
 
-    response = client.checkContent(request);
-    assertTrue(response.profanity == 0);
+   response = client.checkContent(request);
+   assertTrue(response.profanity == 0);
 
-    profanityRequest.postBody = "nigger";
+   profanityRequest.postBody = "nigger";
 
-    response = client.checkContent(profanityRequest);
-    assertFalse(response.profanity == 0);
+   response = client.checkContent(profanityRequest);
+   assertFalse(response.profanity == 0);
 
-    // Not "contains":
-    profanityRequest.postBody = "tralaniggertrala";
+   // Not "contains":
+   profanityRequest.postBody = "tralaniggertrala";
 
-    response = client.checkContent(profanityRequest);
-    assertTrue(response.profanity == 0);
+   response = client.checkContent(profanityRequest);
+   assertTrue(response.profanity == 0);
 
-    profanityRequest.postBody = "bla bla nigger bla bla";
+   profanityRequest.postBody = "bla bla nigger bla bla";
 
-    response = client.checkContent(profanityRequest);
-    assertFalse(response.profanity == 0);
+   response = client.checkContent(profanityRequest);
+   assertFalse(response.profanity == 0);
 
-    profanityRequest.postBody = "nigger";
+   profanityRequest.postBody = "nigger";
 
-    response = client.checkContent(profanityRequest);
-    assertFalse(response.profanity == 0);
+   response = client.checkContent(profanityRequest);
+   assertFalse(response.profanity == 0);
 
-    profanityRequest.postTitle = "foo";
-    profanityRequest.postBody = "bar";
-    profanityRequest.authorName = "nigger";
+   profanityRequest.postTitle = "foo";
+   profanityRequest.postBody = "bar";
+   profanityRequest.authorName = "nigger";
 
-    response = client.checkContent(request);
-    assertFalse(response.profanity == 0);
+   response = client.checkContent(request);
+   assertFalse(response.profanity == 0);
 
-    // Add a custom blacklist item:
-		BlacklistEntry entry = new BlacklistEntry();
+   // Add a custom blacklist item:
+   BlacklistEntry entry = new BlacklistEntry();
 
-    entry.text = "nigzuar";
-		entry.context = MollomBlacklist.Context.ALL_FIELDS;
-		entry.reason = MollomBlacklist.Reason.PROFANITY;
-		entry.match = MollomBlacklist.Match.CONTAINS;
+   entry.text = "nigzuar";
+   entry.context = MollomBlacklist.Context.ALL_FIELDS;
+   entry.reason = MollomBlacklist.Reason.PROFANITY;
+   entry.match = MollomBlacklist.Match.CONTAINS;
 
-		blacklist.add(entry);
+   blacklist.add(entry);
 
-    profanityRequest.postTitle = null;
-    profanityRequest.postBody = "nigzuar";
-    profanityRequest.authorName = null;
+   profanityRequest.postTitle = null;
+   profanityRequest.postBody = "nigzuar";
+   profanityRequest.authorName = null;
 
-    // Test what happens if we edit the post:
-    response = client.checkContent(profanityRequest);
-    assertNotNull(response.session_id);
-    assertFalse(response.profanity == 0);
+   // Test what happens if we edit the post:
+   response = client.checkContent(profanityRequest);
+   assertNotNull(response.session_id);
+   assertFalse(response.profanity == 0);
 
-    profanityRequest.sessionID = response.session_id;
+   profanityRequest.sessionID = response.session_id;
 
-    response = client.checkContent(response.session_id, null, "nigzuar", null, null, null, null, null, null, null, null, checks);
-    assertFalse(response.profanity == 0);
+   response = client.checkContent(response.session_id, null, "nigzuar", null, null, null, null, null, null, null, null, checks);
+   assertFalse(response.profanity == 0);
 
-    response = client.checkContent(response.session_id, null, "n-word", null, null, null, null, null, null, null, null, checks);
-    assertTrue(response.profanity == 0);
+   response = client.checkContent(response.session_id, null, "n-word", null, null, null, null, null, null, null, null, checks);
+   assertTrue(response.profanity == 0);
 
-    // Test "contains":
-    response = client.checkContent(response.session_id, null, "trala-nigzuar-trala", null, null, null, null, null, null, null, null, checks);
-    assertFalse(response.profanity == 0);
+   // Test "contains":
+   response = client.checkContent(response.session_id, null, "trala-nigzuar-trala", null, null, null, null, null, null, null, null, checks);
+   assertFalse(response.profanity == 0);
 
-    // Test combination of local and global terms:
-    response = client.checkContent(response.session_id, null, "nigger nigzuar", null, null, null, null, null, null, null, null, checks);
-    assertFalse(response.profanity == 0);
-	}*/
+   // Test combination of local and global terms:
+   response = client.checkContent(response.session_id, null, "nigger nigzuar", null, null, null, null, null, null, null, null, checks);
+   assertFalse(response.profanity == 0);
+   }*/
 }
