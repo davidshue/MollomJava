@@ -25,6 +25,10 @@
  */
 package com.mollom.client.datastructures;
 
+import com.mollom.client.MollomClient;
+import com.mollom.client.rest.ContentResponse.Content;
+import com.mollom.client.rest.ContentResponse.Language;
+import java.util.List;
 import javax.xml.bind.annotation.XmlRootElement;
 
 /**
@@ -47,15 +51,40 @@ public class CheckContentResponse {
 	 */
 	public int spam;
 	/** Indicator for the quality of the post, between 0 and 1 */
-	public double quality;
+	public Double quality;
 	/** Indicator for the profanity of the post, between 0 and 1 */
-	public double profanity;
+	public Double profanity;
   /** List of possible languages */
-  public Language[] language;
+  public List<Language> language;
 	/** Session id, identifying this message */
 	public String session_id;
   /** Indicator for the sentiment of the post, between 0 and 1 */
-  public double sentiment;
+  public Double sentiment;
+
+  public CheckContentResponse() {
+  }
+
+  public CheckContentResponse(Content content) {
+    session_id = content.getSessionId();
+    spam = spamStringToInt(content.getSpamResult());
+    profanity = content.getProfanityScore();
+    quality = content.getQualityScore();
+    sentiment = content.getSentimentScore();
+    language = content.getLanguages();
+  }
+
+  private int spamStringToInt (String spam) {
+    System.err.println(spam);
+    if ("ham".equals(spam)) {
+      return 1;
+    } else if ("spam".equals(spam)) {
+      return 2;
+    } else if ("unsure".equals(spam)) {
+      return 3;
+    } else {
+      return 0;
+    }
+  }
 
   /**
    * @return true if the the content was spam

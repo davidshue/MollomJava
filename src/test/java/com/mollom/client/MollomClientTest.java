@@ -14,8 +14,7 @@ import com.mollom.client.datastructures.CheckContentRequest;
 import com.mollom.client.MollomClient.ContentCheck;
 import com.mollom.client.datastructures.CheckContentResponse;
 import com.mollom.client.datastructures.GetCaptchaResponse;
-import com.mollom.client.datastructures.Language;
-import com.mollom.client.datastructures.ReputationResponse;
+import com.mollom.client.rest.ContentResponse.Language;
 import java.awt.image.BufferedImage;
 import java.net.URL;
 import javax.imageio.ImageIO;
@@ -50,6 +49,8 @@ public class MollomClientTest extends BaseMollomTest {
 
   @BeforeClass
   public static void beforeClass() {
+    assertNotNull(PUBLIC_KEY);
+    assertNotNull(PRIVATE_KEY);
     try {
       // Create a context that doesn't check certificates. DO NOT USE IN PRODUCTION!
       SSLContext ssl_ctx = SSLContext.getInstance("TLS");
@@ -95,6 +96,7 @@ public class MollomClientTest extends BaseMollomTest {
   }
 
   @Test
+  @Ignore
   public void testEmptyCheckContent() {
     MollomClient client = new MollomClient(PUBLIC_KEY, PRIVATE_KEY);
     try {
@@ -127,8 +129,8 @@ public class MollomClientTest extends BaseMollomTest {
     response = client.checkContent(request);
     assertNotNull(response.session_id);
     assertTrue(response.spam != 0);
-    assertTrue(response.quality == 0);
-    assertTrue(response.profanity == 0);
+    assertTrue(0 <= response.quality && response.quality <= 1);
+    assertNull(response.profanity);
     assertNull(response.language);
     String hash = response.session_id;
 
@@ -142,8 +144,8 @@ public class MollomClientTest extends BaseMollomTest {
     response = client.checkContent(request);
     assertNotNull(response.session_id);
     assertTrue(response.spam != 0);
-    assertTrue(response.quality == 0);
-    assertTrue(response.profanity == 0);
+    assertNull(response.quality);
+    assertNull(response.profanity);
     assertNull(response.language);
     assertEquals(hash, response.session_id);
 
@@ -154,7 +156,7 @@ public class MollomClientTest extends BaseMollomTest {
     assertNotNull(response.session_id);
     assertTrue(response.spam == 0);
     assertTrue(0 <= response.quality && response.quality <= 1);
-    assertTrue(response.profanity == 0);
+    assertNull(response.profanity);
     assertNull(response.language);
     assertEquals(hash, response.session_id);
 
@@ -164,7 +166,7 @@ public class MollomClientTest extends BaseMollomTest {
     response = client.checkContent(request);
     assertNotNull(response.session_id);
     assertTrue(response.spam == 0);
-    assertTrue(response.quality == 0);
+    assertNull(response.quality);
     assertTrue(0 <= response.profanity && response.profanity <= 1);
     assertNull(response.language);
     assertEquals(hash, response.session_id);
@@ -175,12 +177,15 @@ public class MollomClientTest extends BaseMollomTest {
     response = client.checkContent(request);
     assertNotNull(response.session_id);
     assertTrue(response.spam == 0);
-    assertTrue(response.quality == 0);
-    assertTrue(response.profanity == 0);
+    assertNull(response.quality);
+    assertNull(response.profanity);
     assertNotNull(response.language);
-    assertTrue(response.language.length > 0);
-    assertTrue(response.language[0].language != null);
-    assertTrue(0 <= response.language[0].confidence && response.language[0].confidence <= 1);
+    assertFalse(response.language.isEmpty());
+
+    Language lang = response.language.get(0);
+
+    assertTrue(lang.getLanguageCode() != null);
+    assertTrue(0 <= lang.getConfidence() && lang.getConfidence() <= 1);
     assertEquals(hash, response.session_id);
 
     // test with multiple tests
@@ -197,18 +202,25 @@ public class MollomClientTest extends BaseMollomTest {
     assertTrue(0 <= response.quality && response.quality <= 1);
     assertTrue(0 <= response.profanity && response.profanity <= 1);
     assertNotNull(response.language);
-    assertTrue(response.language.length > 0);
-    assertTrue(response.language[0].language != null);
-    assertTrue(0 <= response.language[0].confidence && response.language[0].confidence <= 1);
-    assertEquals(hash, response.session_id);
+    assertFalse(response.language.isEmpty());
 
-    // test the honeypot field
-    request = new CheckContentRequest();
+    lang = response.language.get(0);
+
+    assertTrue(lang.getLanguageCode() != null);
+    assertTrue(0 <= lang.getConfidence() && lang.getConfidence() <= 1);
+    assertEquals(hash, response.session_id);
+  }
+
+  @Test
+  public void testHoneypotField () throws Exception {
+    MollomClient client = new MollomClient(PUBLIC_KEY, PRIVATE_KEY);
+
+    CheckContentRequest request = new CheckContentRequest();
     request.postBody = "Dit is een stukje tekst om te zien of mollom de taal kan bepalen. Laat ons hopen van wel.";
     request.honeypot = "trapped";
-    response = client.checkContent(request);
+    CheckContentResponse response = client.checkContent(request);
+    assertNotNull(response.session_id);
     assertTrue(response.isSpam());
-    assertEquals(hash, response.session_id);
   }
 
   /**

@@ -28,6 +28,10 @@ package com.mollom.client;
 import com.mollom.client.datastructures.CheckContentRequest;
 import com.mollom.client.datastructures.CheckContentResponse;
 import com.mollom.client.datastructures.GetCaptchaResponse;
+import com.mollom.client.rest.CaptchaResource;
+import com.mollom.client.rest.CaptchaResponse;
+import com.mollom.client.rest.ContentResponse;
+import com.mollom.client.rest.RestResponse;
 import com.sun.jersey.core.util.MultivaluedMapImpl;
 import javax.ws.rs.core.MultivaluedMap;
 
@@ -106,7 +110,11 @@ public class MollomClient extends Mollom {
     add(request, "authorMail", parameters.authorMail);
     add(request, "authorUrl", parameters.authorUrl);
 
-    return invoke("POST", path, request, CheckContentResponse.class);
+    ContentResponse response = invoke("POST", path, request, ContentResponse.class);
+    if (response.getCode() < 200 || response.getCode() >= 300) {
+      throw new Exception("Something went wrong while checking the content: " + response.getMessage());
+    }
+    return new CheckContentResponse(response.getContent());
   }
 
   private GetCaptchaResponse getCaptcha(String type, String contentId, boolean useSSL) throws Exception {
@@ -118,7 +126,12 @@ public class MollomClient extends Mollom {
     add(request, "type", type);
     add(request, "ssl", useSSL);
 
-    return invoke("POST", path, request, GetCaptchaResponse.class);
+    CaptchaResource resource = invoke("POST", path, request, CaptchaResource.class);
+
+    GetCaptchaResponse response = new GetCaptchaResponse();
+    response.session_id = resource.getId();
+    response.url = resource.getUrl();
+    return response;
   }
 
   /**
@@ -263,7 +276,11 @@ public class MollomClient extends Mollom {
     add(request, "solution", solution);
     add(request, "authorIp", authorIP);
 
-    return invoke("POST", path, request, Boolean.class);
+    CaptchaResponse response = invoke("POST", path, request, CaptchaResponse.class);
+    if (response.getCode() < 200 || response.getCode() >= 300) {
+      throw new Exception("Something went wrong while checking the captcha: " + response.getMessage());
+    }
+    return response.isSolved();
   }
 
   /**
@@ -288,7 +305,9 @@ public class MollomClient extends Mollom {
     add(request, "captchaId", captchaId);
     add(request, "feedback", feedback);
 
-    // discard the result, always true
-    invoke("POST", "/feedback", request, Boolean.class);
+    RestResponse response = invoke("POST", "/feedback", request, RestResponse.class);
+    if (response.getCode() != 200) {
+      throw new Exception("Something went wrong while processing the feedback: " + response.getCode() + " - " + response.getMessage());
+    }
   }
 }

@@ -120,17 +120,17 @@ abstract class Mollom {
 
   protected void add (MultivaluedMap<String, String> params, String name, String value) {
     if (value != null) {
-      params.putSingle(name, value);
+      params.add(name, value);
     }
   }
 
   protected void add (MultivaluedMap<String, String> params, String name, boolean value) {
-    params.putSingle(name, value ? "1" : "0");
+    params.add(name, value ? "1" : "0");
   }
 
   protected <T extends Enum> void add (MultivaluedMap<String, String> params, String name, T value) {
     if (value != null) {
-      params.putSingle(name, value.toString().toLowerCase());
+      params.add(name, value.toString().toLowerCase());
     }
   }
 
@@ -170,7 +170,12 @@ abstract class Mollom {
         LOGGER.log(Level.WARNING, "Failed to parse the Mollom request or response.", che);
       } catch (UniformInterfaceException uie) {
         LOGGER.log(Level.WARNING, "Unexpected HTTP response.", uie);
+      } finally {
+        i += 1;
       }
+    }
+    if (answer == null) {
+      throw new Exception("The Mollom servers failed to reply.");
     }
     return answer;
   }
