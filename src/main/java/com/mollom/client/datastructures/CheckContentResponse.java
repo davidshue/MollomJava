@@ -74,7 +74,6 @@ public class CheckContentResponse {
   }
 
   private int spamStringToInt (String spam) {
-    System.err.println(spam);
     if ("ham".equals(spam)) {
       return 1;
     } else if ("spam".equals(spam)) {
