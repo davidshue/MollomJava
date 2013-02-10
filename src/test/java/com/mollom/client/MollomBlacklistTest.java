@@ -1,9 +1,6 @@
 package com.mollom.client;
 
-import com.mollom.client.datastructures.CheckContentResponse;
-import com.mollom.client.MollomClient.ContentCheck;
 import com.mollom.client.datastructures.BlacklistEntry;
-import com.mollom.client.datastructures.CheckContentRequest;
 import org.junit.After;
 import org.junit.Test;
 import static org.junit.Assert.*;
@@ -21,7 +18,7 @@ public class MollomBlacklistTest extends BaseMollomTest {
   public void tearDown() throws Exception {
     MollomBlacklist blacklist = new MollomBlacklist(PUBLIC_KEY, PRIVATE_KEY);
 
-		BlacklistEntry[] entries = blacklist.list();
+    BlacklistEntry[] entries = blacklist.list();
 
     for (BlacklistEntry entry : entries) {
       blacklist.remove(entry);
@@ -29,114 +26,119 @@ public class MollomBlacklistTest extends BaseMollomTest {
 
     blacklist = new MollomBlacklist("954b488186222a25496eac28d09f0239", "ff7de1635189cbe5772052977af29755");
 
-		entries = blacklist.list();
+    entries = blacklist.list();
 
     for (BlacklistEntry entry : entries) {
       blacklist.remove(entry);
     }
   }
 
-	/**
-	 * Test of all methods, of class MollomBlacklist.
-	 */
-	@Test
-	public void testMethods() throws Exception {
-		MollomBlacklist blacklist = new MollomBlacklist(PUBLIC_KEY, PRIVATE_KEY);
+  /**
+   * Test of all methods, of class MollomBlacklist.
+   */
+  @Test
+  public void testMethods() throws Exception {
+    MollomBlacklist blacklist = new MollomBlacklist(PUBLIC_KEY, PRIVATE_KEY);
 
-		BlacklistEntry entry = new BlacklistEntry();
-		entry.text = "zever";
-		entry.context = MollomBlacklist.Context.ALL_FIELDS;
-		entry.reason = MollomBlacklist.Reason.QUALITY;
-		entry.match = MollomBlacklist.Match.CONTAINS;
+    BlacklistEntry entry = new BlacklistEntry();
+    entry.text = "zever";
+    entry.context = MollomBlacklist.Context.ALL_FIELDS;
+    entry.reason = MollomBlacklist.Reason.QUALITY;
+    entry.match = MollomBlacklist.Match.CONTAINS;
 
-		BlacklistEntry[] entries1 = blacklist.list();
+    BlacklistEntry[] entries1 = blacklist.list();
 
-		// add the text and get a new list
-		blacklist.add(entry);
-		BlacklistEntry[] entries2 = blacklist.list();
+    // add the text and get a new list
+    entry = blacklist.add(entry);
+    BlacklistEntry[] entries2 = blacklist.list();
 
-		// assert that there's one extra entry
-		assertTrue(entries2.length == entries1.length + 1);
+    // assert that there's one extra entry
+    assertTrue(entries2.length == entries1.length + 1);
 
-		// assert the added text was in the list
-		int i = 0;
-		while (i < entries2.length && !(entries2[i].text.equals(entry.text)
-				&& entries2[i].reason == entry.reason
-				&& entries2[i].context == entry.context
-				&& entries2[i].match == entry.match)) {
-			i++;
-		}
-		assertTrue(i < entries2.length);
+    // assert the added text was in the list
+    int i = 0;
+    while (i < entries2.length && !(entries2[i].text.equals(entry.text)
+            && entries2[i].reason == entry.reason
+            && entries2[i].context == entry.context
+            && entries2[i].match == entry.match)) {
+      i++;
+    }
+    assertTrue(i < entries2.length);
 
-		// remove the text and get a new list
-		blacklist.remove(entry);
-		BlacklistEntry[] entries3 = blacklist.list();
+    // remove the text and get a new list
+    blacklist.remove(entry);
+    BlacklistEntry[] entries3 = blacklist.list();
 
-		// assert the list contains one entry less than before removing
-		assertTrue(entries2.length == entries3.length + 1);
+    // assert the list contains one entry less than before removing
+    assertTrue(entries2.length == entries3.length + 1);
 
-		// assert the text was removed from the list
-		i = 0;
-		while (i < entries3.length && !(entries3[i].text.equals(entry.text)
-				&& entries3[i].reason == entry.reason
-				&& entries3[i].context == entry.context
-				&& entries3[i].match == entry.match)) {
-			i++;
-		}
-		assertTrue(i == entries3.length);
+    // assert the text was removed from the list
+    i = 0;
+    while (i < entries3.length && !(entries3[i].text.equals(entry.text)
+            && entries3[i].reason == entry.reason
+            && entries3[i].context == entry.context
+            && entries3[i].match == entry.match)) {
+      i++;
+    }
+    assertTrue(i == entries3.length);
 
-		// make sure we get an exception for a missing text parameter
-		entry = new BlacklistEntry();
-		entry.context = MollomBlacklist.Context.ALL_FIELDS;
-		entry.reason = MollomBlacklist.Reason.QUALITY;
-		entry.match = MollomBlacklist.Match.CONTAINS;
+    // make sure we get an exception for a missing text parameter
+    entry = new BlacklistEntry();
+    entry.context = MollomBlacklist.Context.ALL_FIELDS;
+    entry.reason = MollomBlacklist.Reason.QUALITY;
+    entry.match = MollomBlacklist.Match.CONTAINS;
 
-		try {
-			blacklist.add(entry);
-			fail("No exception was thrown for missing text");
-		} catch (Exception e) {System.err.println("Caught exception for text");}
+    try {
+      blacklist.add(entry);
+      fail("No exception was thrown for missing text");
+    } catch (Exception e) {
+      System.err.println("Caught exception for text");
+    }
 
-		// make sure we get an exception for a missing context parameter
-		entry = new BlacklistEntry();
-		entry.text = "zever";
-		entry.reason = MollomBlacklist.Reason.QUALITY;
-		entry.match = MollomBlacklist.Match.CONTAINS;
+    // make sure we get an exception for a missing context parameter
+    entry = new BlacklistEntry();
+    entry.text = "zever";
+    entry.reason = MollomBlacklist.Reason.QUALITY;
+    entry.match = MollomBlacklist.Match.CONTAINS;
 
-		try {
-			blacklist.add(entry);
-			fail("No exception was thrown for missing context");
-		} catch (Exception e) {System.err.println("Caught exception for context");}
+    try {
+      blacklist.add(entry);
+    } catch (Exception e) {
+      fail("Exception was thrown for optional context");
+    }
 
-		// make sure we get an exception for a missing reason parameter
-		entry = new BlacklistEntry();
-		entry.text = "zever";
-		entry.context = MollomBlacklist.Context.ALL_FIELDS;
-		entry.match = MollomBlacklist.Match.CONTAINS;
+    // make sure we get an exception for a missing reason parameter
+    entry = new BlacklistEntry();
+    entry.text = "zever";
+    entry.context = MollomBlacklist.Context.ALL_FIELDS;
+    entry.match = MollomBlacklist.Match.CONTAINS;
 
-		try {
-			blacklist.add(entry);
-			fail("No exception was thrown for missing reason");
-		} catch (Exception e) {System.err.println("Caught exception for reason");}
+    try {
+      blacklist.add(entry);
+    } catch (Exception e) {
+      fail("Exception was thrown for optional reason");
+    }
 
-		// make sure we get an exception for a missing match parameter
-		entry = new BlacklistEntry();
-		entry.text = "zever";
-		entry.context = MollomBlacklist.Context.ALL_FIELDS;
-		entry.reason = MollomBlacklist.Reason.QUALITY;
+    // make sure we get an exception for a missing match parameter
+    entry = new BlacklistEntry();
+    entry.text = "zever";
+    entry.context = MollomBlacklist.Context.ALL_FIELDS;
+    entry.reason = MollomBlacklist.Reason.QUALITY;
 
-		try {
-			blacklist.add(entry);
-			fail("No exception was thrown for missing match");
-		} catch (Exception e) {System.err.println("Caught exception for match");}
-	}
+    try {
+      blacklist.add(entry);
+    } catch (Exception e) {
+      fail("Exception was thrown for optional match");
+    }
+  }
 
-	/**
-	 * Test of all methods, of class MollomBlacklist.
-	 *
+  /**
+   * Test of all methods, of class MollomBlacklist.
+   *
 	@Test
 	public void testProfanity() throws Exception {
     CheckContentResponse response;
-    
+
     // Use key which is not in developer mode:
     MollomClient client = new MollomClient("954b488186222a25496eac28d09f0239", "ff7de1635189cbe5772052977af29755");
     MollomBlacklist blacklist = new MollomBlacklist("954b488186222a25496eac28d09f0239", "ff7de1635189cbe5772052977af29755");

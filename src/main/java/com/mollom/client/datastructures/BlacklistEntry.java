@@ -62,7 +62,7 @@ public class BlacklistEntry {
 	/**
    * A timestamp indicating when this text was added to the blacklist.
    */
-	public String created;
+	public long created;
   /**
    * The status of this entry.
    */

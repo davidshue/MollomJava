@@ -26,7 +26,12 @@
 package com.mollom.client;
 
 import com.mollom.client.datastructures.BlacklistEntry;
+import com.mollom.client.rest.BlacklistEntryResponse;
+import com.mollom.client.rest.BlacklistResponse;
+import com.mollom.client.rest.RestResponse;
 import com.sun.jersey.core.util.MultivaluedMapImpl;
+import java.util.ArrayList;
+import java.util.List;
 import javax.ws.rs.core.MultivaluedMap;
 
 /**
@@ -106,12 +111,16 @@ public class MollomBlacklist extends Mollom {
 	public BlacklistEntry add(BlacklistEntry entry) throws Exception {
     MultivaluedMap<String, String> request = new MultivaluedMapImpl();
 
-		add(request, "text",    entry.text);
+		add(request, "value",    entry.text);
 		add(request, "context", entry.context);
 		add(request, "match",   entry.match);
 		add(request, "reason",  entry.reason);
 
-		return invoke("POST", "/blacklist/" + publicKey, request, BlacklistEntry.class);
+    BlacklistEntryResponse response = invoke("POST", "/blacklist/" + publicKey, request, BlacklistEntryResponse.class);
+    if (response.getCode() != 200) {
+      throw new Exception(response.getMessage());
+    }
+		return toBlacklistEntry(response.getEntry());
 	}
 
 	/**
@@ -123,8 +132,11 @@ public class MollomBlacklist extends Mollom {
 	 * @throws Exception when something goes wrong while contacting Mollom
 	 */
 	public void remove(BlacklistEntry entry) throws Exception {
-    invoke("POST", "/blacklist/" + publicKey + "/" + entry.id + "/delete", new MultivaluedMapImpl(), null);
-	}
+    RestResponse response = invoke("POST", "/blacklist/" + publicKey + "/" + entry.id + "/delete", new MultivaluedMapImpl(), RestResponse.class);
+    if (response.getCode() != 200) {
+      throw new Exception(response.getMessage());
+    }
+  }
 
 	/**
 	 * List all text entries in the blacklist for this keypair
@@ -135,6 +147,45 @@ public class MollomBlacklist extends Mollom {
 	 * @throws Exception when something goes wrong while contacting Mollom
 	 */
 	public BlacklistEntry[] list() throws Exception {
-		return invoke("GET" ,"/blacklist/" + publicKey, new MultivaluedMapImpl(), BlacklistEntry[].class);
-	}
+		BlacklistResponse response = invoke("GET" ,"/blacklist/" + publicKey, new MultivaluedMapImpl(), BlacklistResponse.class);
+    List<BlacklistEntry> entries = new ArrayList<BlacklistEntry>(response.getEntries().size());
+    for(com.mollom.client.rest.BlacklistEntry entry : response.getEntries()) {
+      entries.add(toBlacklistEntry(entry));
+    }
+    return entries.toArray(new BlacklistEntry[0]);
+  }
+
+  private BlacklistEntry toBlacklistEntry(com.mollom.client.rest.BlacklistEntry result) {
+    BlacklistEntry entry = new BlacklistEntry();
+    entry.text = result.getValue();
+    entry.created = result.getCreated();
+    entry.context = toContext(result.getContext());
+    entry.match = Match.valueOf(result.getMatch().toUpperCase());
+    entry.reason = Reason.valueOf(result.getReason().toUpperCase());
+    entry.status = result.getStatus() == 1;
+    entry.note = result.getNote();
+    entry.id = result.getId();
+    return entry;
+  }
+
+  private Context toContext(String context) {
+    if ("allFields".equals(context)) {
+      return Context.ALL_FIELDS;
+    } else if ("authorName".equals(context)) {
+      return Context.AUTHOR_NAME;
+    } else if ("authorId".equals(context)) {
+      return Context.AUTHOR_ID;
+    } else if ("authorIp".equals(context)) {
+      return Context.AUTHOR_IP;
+    } else if ("authorMail".equals(context)) {
+      return Context.AUTHOR_MAIL;
+    } else if ("links".equals(context)) {
+      return Context.LINKS;
+    } else if ("postTitle".equals(context)) {
+      return Context.POST_TITLE;
+    } else {
+      return null;
+    }
+  }
+
 }
