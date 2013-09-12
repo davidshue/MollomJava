@@ -1,313 +1,418 @@
-/**
- * Copyright (c) 2010-2012 Mollom
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- *   * Redistributions of source code must retain the above copyright notice,
- *     this list of conditions and the following disclaimer.
- *   * Redistributions in binary form must reproduce the above copyright notice,
- *     this list of conditions and the following disclaimer in the documentation
- *     and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
 package com.mollom.client;
 
-import com.mollom.client.datastructures.CheckContentRequest;
-import com.mollom.client.datastructures.CheckContentResponse;
-import com.mollom.client.datastructures.GetCaptchaResponse;
-import com.mollom.client.rest.CaptchaResource;
-import com.mollom.client.rest.CaptchaResponse;
-import com.mollom.client.rest.ContentResponse;
-import com.mollom.client.rest.RestResponse;
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientHandlerException;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.core.util.MultivaluedMapImpl;
+
+import java.io.IOException;
+import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Unmarshaller;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 
 /**
- * The MollomClient provides in interface to the content checking and captcha
- * functionality of Mollom.
- *
- * @author Thomas Meire
+ * Primary interaction point with all of the Mollom services.
  */
-public class MollomClient extends Mollom {
+public class MollomClient {
+  private final static Logger logger = Logger.getLogger("com.mollom.client.MollomClient");
+  private final Client client;
+  private final int retries;
+  private final boolean acceptAllPostsOnError;
+  private final boolean debugMode;
 
-  public MollomClient(String publicKey, String privateKey) {
-    super(publicKey, privateKey, false);
-  }
+  private final Unmarshaller unmarshaller;
+  private final DocumentBuilder documentBuilder;
 
-  public MollomClient(String publicKey, String privateKey, boolean testing) {
-    super(publicKey, privateKey, testing);
-  }
-
-  /**
-   * An enum indicating the feedback type for a message.
-   */
-  public static enum Feedback {
-
-    APPROVE, SPAM, PROFANITY, QUALITY, UNWANTED, DELETE
-  };
+  private final WebResource captchaResource;
+  private final WebResource contentResource;
+  private final WebResource feedbackResource;
 
   /**
-   * The possible checks that can be executed on a piece of text.
-   *
-   *  - SPAM: check the text for spaminess
-   *  - PROFANITY: check the text for foul language
-   *  - QUALITY: estimate the quality of the text
-   *  - LANGUAGE: determine the most likely language for the text
+   * MollomClient instances are expensive resources. It is recommended that a single MollomClient
+   * instance is shared between multiple threads. The building of requests and receiving of
+   * responses is guaranteed to be thread safe.
    */
-  public static enum ContentCheck {
+  MollomClient(Client client, String rootUrl, int retries, boolean acceptAllPostsOnError, boolean debugMode) {
+    this.client = client;
+    this.retries = retries;
+    this.acceptAllPostsOnError = acceptAllPostsOnError;
+    this.debugMode = debugMode;
 
-    SPAM, PROFANITY, QUALITY, LANGUAGE
-  };
+    // Initialize the resources
+    WebResource rootResource = client.resource(rootUrl);
+    captchaResource = rootResource.path("captcha");
+    contentResource = rootResource.path("content");
+    feedbackResource = rootResource.path("feedback");
 
-  /**
-   * Execute one or more checks on the provided text.
-   *
-   * @see http://mollom.com/api/checkContent
-   *
-   * @param parameters The parameters for mollom.checkContent
-   * @return the response of the mollom.checkContent call
-   * @throws Exception
-   */
-  public CheckContentResponse checkContent (CheckContentRequest parameters) throws Exception {
-    String path = "/content";
-    if (parameters.sessionID != null) {
-      path += "/" + parameters.sessionID;
+    try {
+      JAXBContext jaxbContext = JAXBContext.newInstance(Content.class, Captcha.class);
+      this.unmarshaller = jaxbContext.createUnmarshaller();
+
+      DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
+      this.documentBuilder = documentBuilderFactory.newDocumentBuilder();
+    } catch (JAXBException | ParserConfigurationException e) {
+      throw new MollomConfigurationException("Failed to initialize MollomClient.", e);
     }
+  }
 
-    MultivaluedMap<String, String> request = new MultivaluedMapImpl();
-    add(request, "honeypot", parameters.honeypot);
+  /**
+   * Take in a user-built Content object, make a request to the Mollom service to classify
+   * the given Content, then inject the classification scores back into the original
+   * Content object.
+   * If mollom servers cannot be reached after all of the retries have been expended, classify
+   * the content as either ham or spam (depending on the acceptAllPostsOnError setting
+   * with the reason of "error".
+   * 
+   * @throws MollomRequestException
+   *           If the request failed and debug mode is enabled
+   */
+  public void checkContent(Content content) {
+    MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
+    postParams.putSingle("postTitle", content.getPostTitle());
+    postParams.putSingle("postBody", content.getPostBody());
+    postParams.putSingle("authorName", content.getAuthorName());
+    postParams.putSingle("authorUrl", content.getAuthorUrl());
+    postParams.putSingle("authorMail", content.getAuthorMail());
+    postParams.putSingle("authorIp", content.getAuthorIp());
+    postParams.putSingle("authorId", content.getAuthorId());
 
-    // set the processing parameters
-    if (parameters.checks != null) {
-      for (ContentCheck check : parameters.checks) {
-        add(request, "checks", check);
+    // The Mollom service expects Openids as a space-separated list
+    String openIds = "";
+    if (content.getAuthorOpenIds() != null) {
+      for (String authorOpenId : content.getAuthorOpenIds()) {
+        openIds += authorOpenId += " ";
       }
     }
-    add(request, "strictness", parameters.strictness);
+    postParams.putSingle("authorOpenid", openIds);
 
-    // post information
-    add(request, "postTitle", parameters.postTitle);
-    add(request, "postBody", parameters.postBody);
-
-    // author information
-    add(request, "authorIp", parameters.authorIP);
-    add(request, "authorId", parameters.authorID);
-    add(request, "authorOpenid", parameters.authorOpenID);
-    add(request, "authorName", parameters.authorName);
-    add(request, "authorMail", parameters.authorMail);
-    add(request, "authorUrl", parameters.authorUrl);
-
-    ContentResponse response = invoke("POST", path, request, ContentResponse.class);
-    if (response.getCode() < 200 || response.getCode() >= 300) {
-      throw new Exception("Something went wrong while checking the content: " + response.getMessage());
+    // The Mollom service expects checks as a multi-param
+    if (content.getChecks() != null) {
+      List<String> checks = new ArrayList<>();
+      for (Check check : content.getChecks()) {
+        checks.add(check.toString().toLowerCase());
+      }
+      postParams.put("checks", checks);
     }
-    return new CheckContentResponse(response.getContent());
-  }
 
-  private GetCaptchaResponse getCaptcha(String type, String contentId, boolean useSSL) throws Exception {
-    String path = "/captcha";
+    postParams.putSingle("unsure", content.getPostTitle());
+    postParams.putSingle("strictness", content.getStrictness().toString().toLowerCase());
+    postParams.putSingle("rateLimit", Integer.toString(content.getRateLimit()));
+    postParams.putSingle("honeypot", content.getHoneypot());
+    postParams.putSingle("stored", content.isStored() ? "1" : "0");
+    postParams.putSingle("url", content.getUrl());
+    postParams.putSingle("contextUrl", content.getContextUrl());
+    postParams.putSingle("contextTitle", content.getContextTitle());
 
-    MultivaluedMap<String, String> request = new MultivaluedMapImpl();
+    for (int retryAttemptNumber = 0; retryAttemptNumber <= retries; retryAttemptNumber++) {
+      try {
+        // If the user passes in a brand new Content object, map to the Create Content API
+        // If the user passes in a previously checked Content object, map to the Update (and re-check) Content API
+        ClientResponse response;
+        if (content.getId() == null) { // Check new content
+          response = contentResource
+              .accept(MediaType.APPLICATION_XML).type(MediaType.APPLICATION_FORM_URLENCODED)
+              .post(ClientResponse.class, postParams);
+        } else { // Recheck existing content
+          response = contentResource.path(content.getId())
+              .accept(MediaType.APPLICATION_XML).type(MediaType.APPLICATION_FORM_URLENCODED)
+              .post(ClientResponse.class, postParams);
+        }
 
-    add(request, "contentId", contentId);
-    add(request, "type", type);
-    add(request, "ssl", useSSL);
+        if (response.getStatus() < 200 || response.getStatus() >= 300) { // Was not a successful call
+          // Parse out the error message from the response to use as the exception message
+          throw new MollomRequestException(response.getEntity(String.class));
+        } else { // Success
+          // Get the returned content from the Mollom service
+          Content returnedContent = parseBody(response.getEntity(String.class), "content", Content.class);
 
-    CaptchaResource resource = invoke("POST", path, request, CaptchaResource.class);
+          content.setId(returnedContent.getId());
 
-    GetCaptchaResponse response = new GetCaptchaResponse();
-    response.session_id = resource.getId();
-    response.url = resource.getUrl();
-    return response;
-  }
-
-  /**
-   * Get an image captcha for a new session. All images will be send over http.
-   *
-   * @see http://mollom.com/api/getImageCaptcha
-   *
-   * @return a couple with an url for the captcha and a new session id
-   * @throws Exception when something goes wrong while contacting Mollom
-   */
-  public GetCaptchaResponse getImageCaptcha() throws Exception {
-    return getCaptcha("image", null, false);
-  }
-
-  /**
-   * Get an image captcha for a new session. All images will be send over http.
-   *
-   * @see http://mollom.com/api/getImageCaptcha
-   *
-   * @param useSSL boolean to indicating if we need to use ssl to serve the captcha
-   * @return a couple with an url for the captcha and a new session id
-   * @throws Exception when something goes wrong while contacting Mollom
-   */
-  public GetCaptchaResponse getImageCaptcha(boolean useSSL) throws Exception {
-    return getCaptcha("image", null, useSSL);
-  }
-
-  /**
-   * Get an image captcha for the provided session. All images will be send over http.
-   *
-   * @see http://mollom.com/api/getImageCaptcha
-   *
-   * @param sessionID the sessionid of the message
-   * @return a couple with an url for the captcha and a new session id
-   * @throws Exception when something goes wrong while contacting Mollom
-   */
-  public GetCaptchaResponse getImageCaptcha(String sessionID) throws Exception {
-    return getCaptcha("image", sessionID, false);
-  }
-
-  /**
-   * Get an image captcha for the provided session.
-   *
-   * NOTE: The value of the useSSL parameter is only taken into account for
-   * 'Mollom Plus' and 'Mollom Premium' users. Captcha's for 'Mollom Free'
-   * users will always be send over plain http.
-   *
-   * @see http://mollom.com/api/getImageCaptcha
-   *
-   * @param sessionID the sessionid of the message
-   * @param useSSL boolean to indicating if we need to use ssl to serve the captcha
-   * @return a couple with an url for the captcha and a new session id
-   * @throws Exception when something goes wrong while contacting Mollom
-   */
-  public GetCaptchaResponse getImageCaptcha(String sessionID, boolean useSSL) throws Exception {
-    return getCaptcha("image", sessionID, useSSL);
-  }
-
-  /**
-   * Get an audio captcha for the provided session.
-   * The captcha will always be send over plain http.
-   *
-   * @see http://mollom.com/api/getAudioCaptcha
-   *
-   * @param sessionID the sessionid of the message
-   * @return a couple with an url for the captcha and a new session id
-   * @throws Exception when something goes wrong while contacting Mollom
-   */
-  public GetCaptchaResponse getAudioCaptcha(String sessionID) throws Exception {
-    return getCaptcha("audio", sessionID, false);
-  }
-
-  /**
-   * Get an audio captcha for the provided session.
-   * The captcha will always be send over plain http.
-   *
-   * NOTE: The value of the useSSL parameter is only taken into account for
-   * 'Mollom Plus' and 'Mollom Premium' users. Captcha's for 'Mollom Free'
-   * users will always be send over plain http.
-   *
-   * @see http://mollom.com/api/getAudioCaptcha
-   *
-   * @param sessionID the sessionid of the message
-   * @param useSSL boolean to indicating if we need to use ssl to serve the captcha
-   * @return a couple with an url for the captcha and a new session id
-   * @throws Exception when something goes wrong while contacting Mollom
-   */
-  public GetCaptchaResponse getAudioCaptcha(String sessionID, boolean useSSL) throws Exception {
-    return getCaptcha("audio", sessionID, useSSL);
-  }
-
-  /**
-   * Get an audio captcha for a new session.
-   * The captcha will always be send over plain http.
-   *
-   * @see http://mollom.com/api/getAudioCaptcha
-   *
-   * @return a couple with an url for the captcha and a new session id
-   * @throws Exception when something goes wrong while contacting Mollom
-   */
-  public GetCaptchaResponse getAudioCaptcha() throws Exception {
-    return getCaptcha("audio", null, false);
-  }
-
-  /**
-   * Get an audio captcha for a new session.
-   * The captcha will always be send over plain http.
-   *
-   * NOTE: The value of the useSSL parameter is only taken into account for
-   * 'Mollom Plus' and 'Mollom Premium' users. Captcha's for 'Mollom Free'
-   * users will always be send over plain http.
-   *
-   * @see http://mollom.com/api/getAudioCaptcha
-   *
-   * @param useSSL boolean to indicating if we need to use ssl to serve the captcha
-   * @return a couple with an url for the captcha and a new session id
-   * @throws Exception when something goes wrong while contacting Mollom
-   */
-  public GetCaptchaResponse getAudioCaptcha(boolean useSSL) throws Exception {
-    return getCaptcha("audio", null, useSSL);
-  }
-
-  /**
-   * Validate the visitors CAPTCHA answer.
-   *
-   * @see http://mollom.com/api/checkCaptcha
-   *
-   * @param captchaId the sessionID of the captcha
-   * @param solution the visitors captcha solution
-   * @param authorIP the visitors ip address
-   * @return true if the solution is correct, false if incorrect.
-   * @throws Exception when something goes wrong while contacting Mollom
-   */
-  public boolean checkCaptcha(String captchaId, String solution, String authorIP) throws Exception {
-    if (captchaId == null || captchaId.isEmpty()) {
-      return false;
+          // Merge classification results into the original Content object
+          List<Check> requestedChecks = Arrays.asList(content.getChecks());
+          if (requestedChecks.contains(Check.SPAM)) {
+            content.setSpamClassification(returnedContent.getSpamClassification());
+            content.setSpamScore(returnedContent.getSpamScore());
+          }
+          if (requestedChecks.contains(Check.QUALITY)) {
+            content.setQualityScore(returnedContent.getQualityScore());
+          }
+          if (requestedChecks.contains(Check.PROFANITY)) {
+            content.setProfanityScore(returnedContent.getProfanityScore());
+          }
+          if (requestedChecks.contains(Check.LANGUAGE)) {
+            content.setLanguages(returnedContent.getLanguages());
+          }
+        }
+        break; // Don't try again if succeeded
+      } catch (ClientHandlerException | MollomRequestException e) {
+        if (debugMode) {
+          throw new MollomRequestException("Problem checking content.", e);
+        } else if (acceptAllPostsOnError) {
+          content.setSpamClassification("ham");
+          content.setSpamScore(0.0);
+          content.setReason("error");
+        } else {
+          content.setSpamClassification("spam");
+          content.setSpamScore(1.0);
+          content.setReason("error");
+        }
+        logger.log(Level.SEVERE, "Problem checking content.", e);
+      }
     }
+  }
+
+  /**
+   * Creates a new Captcha object with a url to the captcha resource.
+   * Use this to create a Captcha that isn't associated with any Content.
+   * This is most commonly used for Captcha-only checks that don't involve Mollom text analysis.
+   * 
+   * @return The created Captcha object, or null if one could not be created
+   * @throws MollomRequestException
+   *           If the request failed and debug mode is enabled
+   */
+  public Captcha createCaptcha(CaptchaType captchaType, boolean ssl) {
+    return createCaptcha(captchaType, ssl, null);
+  }
+
+  /**
+   * Creates a new Captcha object with a url to the captcha resource.
+   * A content should be passed in to associate the captcha with a previous unsure content request.
+   * 
+   * @return The created Captcha object, or null if one could not be created
+   * @throws MollomRequestException
+   *           If the request failed and debug mode is enabled
+   */
+  public Captcha createCaptcha(CaptchaType captchaType, boolean ssl, Content content) {
+    MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
+    postParams.putSingle("type", captchaType.toString().toLowerCase());
+    postParams.putSingle("ssl", ssl ? "1" : "0");
+    postParams.putSingle("contentId", content.getId());
     
-    String path = "/captcha/" + captchaId;
-
-    MultivaluedMap<String, String> request = new MultivaluedMapImpl();
-    add(request, "solution", solution);
-    add(request, "authorIp", authorIP);
-
-    CaptchaResponse response = invoke("POST", path, request, CaptchaResponse.class);
-    if (response.getCode() < 200 || response.getCode() >= 300) {
-      throw new Exception("Something went wrong while checking the captcha: " + response.getMessage());
+    for (int retryAttemptNumber = 0; retryAttemptNumber <= retries; retryAttemptNumber++) {
+      try {
+        ClientResponse response = captchaResource
+            .accept(MediaType.APPLICATION_XML).type(MediaType.APPLICATION_FORM_URLENCODED)
+            .post(ClientResponse.class, postParams);
+        if (response.getStatus() < 200 || response.getStatus() >= 300) { // Was not a successful call
+          // Parse out the error message from the response to use as the exception message
+          throw new MollomRequestException(response.getEntity(String.class));
+        } else { // Success
+          return parseBody(response.getEntity(String.class), "captcha", Captcha.class);
+        }
+      } catch (ClientHandlerException clientHandlerException) {
+        // Ignore client handler exceptions and retry
+      }
     }
-    return response.isSolved();
+
+    if (debugMode) {
+      throw new MollomRequestException("Failed to contact the Mollom servers to create captcha.");
+    } else {
+      logger.log(Level.SEVERE, "Failed to contact the Mollom service to create CAPTCHA.");
+      return null;
+    }
   }
 
   /**
-   * Send feedback to Mollom about the message that corresponds with the provided
-   * session_id. Using this method, a message can be marked as one of the
-   * five classes: 'ham', 'spam', 'profanity', 'low-quality' or 'unwanted'.
-   * The 'ham' feedback is only available for Mollom Premium customers.
-   *
-   * @see http://mollom.com/api/sendFeedback
-   *
-   * @param contentId the id identifying the message
-   * @param feedback an indicator with feedback about the message
-   * @throws Exception when something goes wrong while contacting Mollom
+   * Take the Captcha object (after the user has injected the solution and author information), make a
+   * request to the Mollom service to determine whether or not the solution was correct, and inject the
+   * result back into the Captcha object.
+   * If mollom servers cannot be reached after all of the retries have been expended, mark as either
+   * solved or not solved (depending on the acceptAllPostsOnError setting
+   * with the reason of "error".
+   * 
+   * @throws MollomRequestException
+   *           If the request failed and debug mode is enabled
    */
-  public void sendFeedback(String contentId, String captchaId, Feedback feedback) throws Exception {
-    if (contentId == null || contentId.isEmpty() || captchaId == null || captchaId.isEmpty()) {
-      return;
+  public void checkCaptcha(Captcha captcha) {
+    MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
+    postParams.putSingle("solution", captcha.getSolution());
+    postParams.putSingle("authorIp", captcha.getAuthorIp());
+    postParams.putSingle("authorId", captcha.getAuthorId());
+
+    for (int retryAttemptNumber = 0; retryAttemptNumber <= retries; retryAttemptNumber++) {
+      try {
+        ClientResponse response = captchaResource
+            .path(captcha.getId())
+            .accept(MediaType.APPLICATION_XML).type(MediaType.APPLICATION_FORM_URLENCODED)
+            .post(ClientResponse.class, postParams);
+        if (response.getStatus() < 200 || response.getStatus() >= 300) { // Was not a successful call
+          // Parse out the error message from the response to use as the exception message
+          throw new MollomRequestException(response.getEntity(String.class));
+        } else { // Success
+          Captcha returnedCaptcha = parseBody(response.getEntity(String.class), "captcha", Captcha.class);
+          captcha.setSolved(returnedCaptcha.isSolved() ? 1 : 0);
+          captcha.setReason(returnedCaptcha.getReason());
+        }
+        break; // Don't try again if succeeded
+      } catch (ClientHandlerException | MollomRequestException e) {
+        if (debugMode) {
+          throw new MollomRequestException("Problem checking captcha.", e);
+        } else if (acceptAllPostsOnError) {
+          captcha.setSolved(1);
+          captcha.setReason("error");
+        } else {
+          captcha.setSolved(0);
+          captcha.setReason("error");
+        }
+        logger.log(Level.SEVERE, "Problem checking captcha.", e);
+      }
     }
+  }
 
-    MultivaluedMap<String, String> request = new MultivaluedMapImpl();
-    add(request, "contentId", contentId);
-    add(request, "captchaId", captchaId);
-    add(request, "feedback", feedback);
+  /**
+   * Send feedback for a previously checked content.
+   * This mechanism allows Mollom to learn from its mistakes. For example, if a spam message was erroneously classified as ham, Mollom will use that information
+   * to fine-tune its spam detection mechanisms. The more feedback provided to Mollom, the more effective it becomes. If possible, this feedback mechanism
+   * should be built into all Mollom applications.
+   * Feedback also affects the reputation of the author of the content.
+   */
+  public void sendFeedback(Content content, FeedbackReason feedback) {
+    sendFeedback(content, null, feedback);
+  }
 
-    RestResponse response = invoke("POST", "/feedback", request, RestResponse.class);
-    if (response.getCode() != 200) {
-      throw new Exception("Something went wrong while processing the feedback: " + response.getCode() + " - " + response.getMessage());
+  /**
+   * Send feedback for a previously checked captcha.
+   * Feedback affects the reputation of the author of the content.
+   * This call should be used only when only using captchas. It is not necessary to send feedback for a captcha if it was associated with a Content already.
+   */
+  public void sendFeedback(Captcha captcha, FeedbackReason feedback) {
+    sendFeedback(null, captcha, feedback);
+  }
+
+  private void sendFeedback(Content content, Captcha captcha, FeedbackReason feedback) {
+    MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
+    if (content != null) {
+      postParams.putSingle("contentId", content.getId());
+    }
+    if (captcha != null) {
+      postParams.putSingle("captchaId", captcha.getId());
+    }
+    postParams.putSingle("reason", feedback.toString().toLowerCase());
+    for (int retryAttemptNumber = 0; retryAttemptNumber <= retries; retryAttemptNumber++) {
+      try {
+        feedbackResource.accept(MediaType.APPLICATION_XML).type(MediaType.APPLICATION_FORM_URLENCODED).post(ClientResponse.class, postParams);
+      } catch (ClientHandlerException e) {
+        if (debugMode) {
+          throw new MollomRequestException("Problem sending feedback.", e);
+        }
+        logger.log(Level.SEVERE, "Problem sending feedback.", e);
+      }
+    }
+  }
+
+  /**
+   * Notify Mollom that the content has been stored on the client-side.
+   * Used to submit content to Mollom's Content Moderation Platform.
+   * 
+   * @throws MollomRequestException
+   *           If the request failed and debug mode is enabled
+   * @see MollomClient#markAsStored(Content, String, String, String)
+   */
+  public void markAsStored(Content content) {
+    markAsStored(content, null, null, null);
+  }
+
+  /**
+   * Notify Mollom that the content has been stored on the client-side.
+   * Used to submit content to Mollom's Content Moderation Platform.
+   * 
+   * @throws MollomRequestException
+   *           If the request failed and debug mode is enabled
+   */
+  public void markAsStored(Content content, String url, String contextUrl, String contextTitle) {
+    content.setChecks(); // Don't re-check anything
+    content.setStored(true);
+    content.setUrl(url);
+    content.setContextUrl(contextUrl);
+    content.setContextTitle(contextTitle);
+    for (int retryAttemptNumber = 0; retryAttemptNumber <= retries; retryAttemptNumber++) {
+      try {
+        checkContent(content);
+        return; // If we've successfully checked the content, stop here
+      } catch (ClientHandlerException clientHandlerException) {
+        // Ignore client handler exceptions and retry
+      }
+    }
+    // If we failed to contact Mollom, just swallow the exception and log an error
+    // The fact that Mollom is down shouldn't affect the user's site here
+    if (debugMode) {
+      throw new MollomRequestException("Failed to mark content as stored.");
+    } else {
+      logger.log(Level.SEVERE, "Failed to contact the Mollom service to mark content as stored.");
+    }
+  }
+
+  /**
+   * Notify Mollom that the content has been deleted on the client-side.
+   * Used to remove content from Mollom's Content Moderation Platform.
+   * 
+   * @throws MollomRequestException
+   *           If the request failed
+   */
+  public void markAsDeleted(Content content) {
+    content.setChecks(); // Don't re-check anything
+    content.setStored(false);
+    for (int retryAttemptNumber = 0; retryAttemptNumber <= retries; retryAttemptNumber++) {
+      try {
+        checkContent(content);
+        return; // If we've successfully checked the content, stop here
+      } catch (ClientHandlerException clientHandlerException) {
+        // Ignore client handler exceptions and retry
+      }
+    }
+    // If we failed to contact Mollom, just swallow the exception and log an error
+    // The fact that Mollom is down shouldn't affect the user's site here
+    if (debugMode) {
+      throw new MollomRequestException("Failed to mark content as deleted.");
+    } else {
+      logger.log(Level.SEVERE, "Failed to contact the Mollom service to mark content as stored.");
+    }
+  }
+
+  /**
+   * Destroy the MollomClient object. Not doing this can cause connection leaks.
+   * The MollomClient must not be reused after this method is called otherwise undefined behavior will occur.
+   */
+  public void destroy() {
+    client.destroy();
+  }
+
+  /**
+   * Expected xml in the format of:
+   * <contentresponse> 
+   *  <code>200</code> 
+   *  <bodyTag>...</bodyTag>
+   * </contentresponse>
+   * 
+   * @return JAXB unmarshalled expectedType object from the response.
+   */
+  private <T> T parseBody(String xml, String bodyTag, Class<T> expectedType) {
+    try {
+      // We have to parse the xml into a document first before passing it to JAXB to get the body
+      // because the Mollom service returns the object wrapped in a <Response> object
+      Document document = documentBuilder.parse(new InputSource(new StringReader(xml)));
+      Node bodyNode = document.getElementsByTagName(bodyTag).item(0);
+      return unmarshaller.unmarshal(bodyNode, expectedType).getValue();
+    } catch (SAXException | IOException | JAXBException e) {
+      throw new MollomRequestException("Issue parsing response from Mollom server.", e);
     }
   }
 }
