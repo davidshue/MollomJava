@@ -46,26 +46,29 @@ public class MollomClient {
   private final WebResource captchaResource;
   private final WebResource feedbackResource;
   private final WebResource blacklistResource;
+  private final WebResource whitelistResource;
 
   /**
    * MollomClient instances are expensive resources. It is recommended that a single MollomClient
    * instance is shared between multiple threads. The building of requests and receiving of
    * responses is guaranteed to be thread safe.
    */
-  MollomClient(Client client, WebResource contentResource, WebResource captchaResource, WebResource feedbackResource, WebResource blacklistResource,
+  MollomClient(Client client, WebResource contentResource, WebResource captchaResource, WebResource feedbackResource, 
+      WebResource blacklistResource, WebResource whitelistResource,
       int retries, boolean acceptAllPostsOnError, boolean debugMode) {
     this.client = client;
     this.contentResource = contentResource;
     this.captchaResource = captchaResource;
     this.feedbackResource = feedbackResource;
     this.blacklistResource = blacklistResource;
+    this.whitelistResource = whitelistResource;
 
     this.retries = retries;
     this.acceptAllPostsOnError = acceptAllPostsOnError;
     this.debugMode = debugMode;
 
     try {
-      JAXBContext jaxbContext = JAXBContext.newInstance(Content.class, Captcha.class, BlacklistEntry.class);
+      JAXBContext jaxbContext = JAXBContext.newInstance(Content.class, Captcha.class, BlacklistEntry.class, WhitelistEntry.class);
       this.unmarshaller = jaxbContext.createUnmarshaller();
 
       DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
@@ -357,12 +360,77 @@ public class MollomClient {
   }
 
   /**
-   * @return The blacklist entry wtih the given id. (or null if one doesn't exist)
+   * @return The blacklist entry with the given id. (or null if one doesn't exist)
    */
   public BlacklistEntry getBlacklistEntry(String blacklistEntryId) {
     ClientResponse response = request("GET", blacklistResource.path(blacklistEntryId));
     if (response != null) { // Success
       return parseBody(response.getEntity(String.class), "entry", BlacklistEntry.class);
+    } else { // Failure
+      return null;
+    }
+  }
+
+  /**
+   * Saves a whitelist entry to Mollom.
+   * If the whitelist entry already exists, update Mollom with the new properties.
+   */
+  public void saveWhitelistEntry(WhitelistEntry whitelistEntry) {
+    if (whitelistEntry.getContext() == Context.ALLFIELDS 
+        || whitelistEntry.getContext() == Context.LINKS 
+        || whitelistEntry.getContext() == Context.POSTTITLE) {
+      throw new MollomConfigurationException("Given context not supported for WhitelistEntry.");
+    }
+
+    MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
+    postParams.putSingle("value", whitelistEntry.getValue());
+    postParams.putSingle("context", whitelistEntry.getContext().toString());
+    postParams.putSingle("status", whitelistEntry.isEnabled() ? "1" : "0");
+    postParams.putSingle("note", whitelistEntry.getNote());
+
+    ClientResponse response;
+    if (whitelistEntry.getId() != null) { // Update existing entry
+      response = request("POST", whitelistResource.path(whitelistEntry.getId()), postParams);
+    } else { // Create new entry
+      response = request("POST", whitelistResource, postParams);
+    }
+
+    if (response != null) { // Success
+      WhitelistEntry returnedWhitelistEntry = parseBody(response.getEntity(String.class), "entry", WhitelistEntry.class);
+      whitelistEntry.setCreated(returnedWhitelistEntry.getCreated());
+      whitelistEntry.setId(returnedWhitelistEntry.getId());
+      whitelistEntry.setLastMatch(returnedWhitelistEntry.getLastMatch());
+      whitelistEntry.setMatchCount(returnedWhitelistEntry.getMatchCount());
+      whitelistEntry.setStatus(returnedWhitelistEntry.isEnabled() ? 1 : 0);
+    }
+  }
+
+  /**
+   * Deletes a whitelist entry from Mollom.
+   */
+  public void deleteWhitelistEntry(WhitelistEntry whitelistEntry) {
+    request("POST", whitelistResource.path(whitelistEntry.getId()).path("delete"), new MultivaluedMapImpl());
+  }
+
+  /**
+   * @return A list of all of the whitelist entries (owned by this public key).
+   */
+  public List<WhitelistEntry> listWhitelistEntries() {
+    ClientResponse response = request("GET", whitelistResource);
+    if (response != null) { // Success
+      return parseList(response.getEntity(String.class), "entry", WhitelistEntry.class);
+    } else { // Failure
+      return new ArrayList<>();
+    }
+  }
+
+  /**
+   * @return The whitelist entry with the given id. (or null if one doesn't exist)
+   */
+  public WhitelistEntry getWhitelistEntry(String whitelistEntryId) {
+    ClientResponse response = request("GET", whitelistResource.path(whitelistEntryId));
+    if (response != null) { // Success
+      return parseBody(response.getEntity(String.class), "entry", WhitelistEntry.class);
     } else { // Failure
       return null;
     }
