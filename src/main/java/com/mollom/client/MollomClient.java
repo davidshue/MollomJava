@@ -50,14 +50,13 @@ public class MollomClient {
    * instance is shared between multiple threads. The building of requests and receiving of
    * responses is guaranteed to be thread safe.
    */
-  MollomClient(Client client, String rootUrl, int retries, boolean acceptAllPostsOnError, boolean debugMode) {
+  MollomClient(Client client, WebResource rootResource, int retries, boolean acceptAllPostsOnError, boolean debugMode) {
     this.client = client;
     this.retries = retries;
     this.acceptAllPostsOnError = acceptAllPostsOnError;
     this.debugMode = debugMode;
 
     // Initialize the resources
-    WebResource rootResource = client.resource(rootUrl);
     captchaResource = rootResource.path("captcha");
     contentResource = rootResource.path("content");
     feedbackResource = rootResource.path("feedback");

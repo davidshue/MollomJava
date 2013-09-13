@@ -1,10 +1,16 @@
 package com.mollom.client;
 
 import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.client.filter.ClientFilter;
+import com.sun.jersey.core.util.MultivaluedMapImpl;
 import com.sun.jersey.oauth.client.OAuthClientFilter;
 import com.sun.jersey.oauth.signature.OAuthParameters;
 import com.sun.jersey.oauth.signature.OAuthSecrets;
+
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedMap;
 
 /**
  * The initial entry point for the Mollom API library.
@@ -227,23 +233,12 @@ public class MollomClientBuilder {
     return this;
   }
 
-  private void verifyKeysConfigured() {
-    if(publicKey == null) {
-      throw new MollomConfigurationException("The property `publicKey` must be configured.");
-    }
-    if(privateKey == null) {
-      throw new MollomConfigurationException("The property `privateKey` must be configured.");
-    }
-  }
-
   /**
    * Builds the MollomClient object as configured.
    * 
    * @throws MollomConfigurationException If could not authenticate with the Mollom service.
    */
   public MollomClient build() {
-    verifyKeysConfigured();
-
     Client client = new Client();
     client.setConnectTimeout(connectionTimeout);
     client.setReadTimeout(readTimeout);
@@ -254,9 +249,28 @@ public class MollomClientBuilder {
     client.addFilter(oauthFilter);
 
     String rootUrl = testing ? TESTING_ENDPOINT : PRODUCTION_ENDPOINT;
-    rootUrl += apiVersion;
+    WebResource rootResource = client.resource(rootUrl).path(apiVersion);
 
-    MollomClient mollomClient = new MollomClient(client, rootUrl, retries, acceptAllPostsOnError, debugMode);
+    // Verify the public private keys
+    if(publicKey == null) {
+      throw new MollomConfigurationException("The property `publicKey` must be configured.");
+    }
+    if(privateKey == null) {
+      throw new MollomConfigurationException("The property `privateKey` must be configured.");
+    }
+    MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
+    postParams.putSingle("platformName", platformName);
+    postParams.putSingle("platformVersion", platformVersion);
+    postParams.putSingle("clientName", clientName);
+    postParams.putSingle("clientVersion", clientVersion);
+    ClientResponse response = rootResource.path("site").path(publicKey)
+      .accept(MediaType.APPLICATION_XML).type(MediaType.APPLICATION_FORM_URLENCODED)
+      .post(ClientResponse.class, postParams);
+    if (response.getStatus() != 200) {
+      throw new MollomConfigurationException("Invalid public/private key.");
+    }
+
+    MollomClient mollomClient = new MollomClient(client, rootResource, retries, acceptAllPostsOnError, debugMode);
     return mollomClient;
   }
 }
