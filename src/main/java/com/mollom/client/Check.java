@@ -23,5 +23,10 @@ public enum Check {
    * Determine the most likely language(s) for the text
    * Will allow for getLanguages()
    */
-  LANGUAGE
+  LANGUAGE;
+
+  @Override
+  public String toString() {
+    return name().toLowerCase();
+  }
 }

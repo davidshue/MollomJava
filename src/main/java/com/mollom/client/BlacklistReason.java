@@ -1,15 +1,11 @@
 package com.mollom.client;
 
 /**
- * Reason for giving feedback to Mollom.
+ * The reason for why the value is blacklisted.
  */
-public enum FeedbackReason {
+public enum BlacklistReason {
   /**
-   * Report that the content is ham.
-   */
-  APPROVE,
-  /**
-   * Report that the content is spam.
+   * Report that the content is spammy
    */
   SPAM,
   /**

@@ -23,38 +23,65 @@ public class BlacklistEntry {
   private String match;
   private String note;
 
+  /**
+   * @return Unique blacklist entry ID assigned by Mollom.
+   */
   public String getId() {
     return id;
   }
 
+  /**
+   * @return Unix timestamp (seconds) of when the blacklist entry was created.
+   */
   public int getCreated() {
     return created;
   }
 
+  /**
+   * @return Unix timestamp (seconds) of when the last time this blacklist entry matched.
+   */
   public int getLastMatch() {
     return lastMatch;
   }
 
+  /**
+   * @return Number of times this blacklist entry has matched content
+   */
   public long getMatchCount() {
     return matchCount;
   }
 
+  /**
+   * @return The string/value to blacklist.
+   */
   public String getValue() {
     return value;
   }
 
-  public String getReason() {
-    return reason;
+  /**
+   * @return The reason for why the value is blacklisted.
+   */
+  public BlacklistReason getReason() {
+    return BlacklistReason.valueOf(reason.toUpperCase());
   }
 
-  public String getContext() {
-    return context;
+  /**
+   * @return Where the entry's value may match.
+   */
+  public Context getContext() {
+    return Context.valueOf(context.toUpperCase());
   }
 
-  public String getMatch() {
-    return match;
+  /**
+   * @return How precise the entry's value may match.
+   */
+  public BlacklistMatchPrecision getMatch() {
+    return BlacklistMatchPrecision.valueOf(match.toUpperCase());
   }
 
+  /**
+   * @return A custom string explaining the entry. Useful in a multi-moderator scenario.
+   */
   public String getNote() {
     return note;
   }
@@ -83,16 +110,16 @@ public class BlacklistEntry {
     this.value = value;
   }
 
-  public void setReason(String reason) {
-    this.reason = reason;
+  public void setReason(BlacklistReason reason) {
+    this.reason = reason.toString();
   }
 
-  public void setContext(String context) {
-    this.context = context;
+  public void setContext(Context context) {
+    this.context = context.toString();
   }
 
-  public void setMatch(String match) {
-    this.match = match;
+  public void setMatch(BlacklistMatchPrecision match) {
+    this.match = match.toString();
   }
 
   public void setNote(String note) {

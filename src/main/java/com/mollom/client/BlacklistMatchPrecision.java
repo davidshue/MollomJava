@@ -1,7 +1,10 @@
 package com.mollom.client;
 
-public enum CaptchaType {
-  IMAGE, AUDIO;
+/**
+ * How precise a Blacklist entry may match.
+ */
+public enum BlacklistMatchPrecision {
+  EXACT, CONTAINS;
 
   @Override
   public String toString() {

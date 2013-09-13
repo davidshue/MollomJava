@@ -109,13 +109,13 @@ public class MollomClient {
     if (content.getChecks() != null) {
       List<String> checks = new ArrayList<>();
       for (Check check : content.getChecks()) {
-        checks.add(check.toString().toLowerCase());
+        checks.add(check.toString());
       }
       postParams.put("checks", checks);
     }
 
     postParams.putSingle("unsure", content.getPostTitle());
-    postParams.putSingle("strictness", content.getStrictness().toString().toLowerCase());
+    postParams.putSingle("strictness", content.getStrictness().toString());
     postParams.putSingle("rateLimit", Integer.toString(content.getRateLimit()));
     postParams.putSingle("honeypot", content.getHoneypot());
     postParams.putSingle("stored", content.isStored() ? "1" : "0");
@@ -189,7 +189,7 @@ public class MollomClient {
    */
   public Captcha createCaptcha(CaptchaType captchaType, boolean ssl, Content content) {
     MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
-    postParams.putSingle("type", captchaType.toString().toLowerCase());
+    postParams.putSingle("type", captchaType.toString());
     postParams.putSingle("ssl", ssl ? "1" : "0");
     postParams.putSingle("contentId", content.getId());
     
@@ -262,7 +262,7 @@ public class MollomClient {
     if (captcha != null) {
       postParams.putSingle("captchaId", captcha.getId());
     }
-    postParams.putSingle("reason", feedback.toString().toLowerCase());
+    postParams.putSingle("reason", feedback.toString());
     request("post", feedbackResource, postParams);
   }
 
@@ -314,9 +314,9 @@ public class MollomClient {
   public void saveBlacklistEntry(BlacklistEntry blacklistEntry) {
     MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
     postParams.putSingle("value", blacklistEntry.getValue());
-    postParams.putSingle("reason", blacklistEntry.getReason());
-    postParams.putSingle("context", blacklistEntry.getContext());
-    postParams.putSingle("match", blacklistEntry.getMatch());
+    postParams.putSingle("reason", blacklistEntry.getReason().toString());
+    postParams.putSingle("context", blacklistEntry.getContext().toString());
+    postParams.putSingle("match", blacklistEntry.getMatch().toString());
     postParams.putSingle("status", blacklistEntry.isEnabled() ? "1" : "0");
     postParams.putSingle("note", blacklistEntry.getNote());
 

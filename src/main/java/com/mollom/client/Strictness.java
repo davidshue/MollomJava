@@ -7,5 +7,10 @@ package com.mollom.client;
  * - RELAXED: more likely to classify content as ham
  */
 public enum Strictness {
-  STRICT, NORMAL, RELAXED
+  STRICT, NORMAL, RELAXED;
+
+  @Override
+  public String toString() {
+    return name().toLowerCase();
+  }
 }
