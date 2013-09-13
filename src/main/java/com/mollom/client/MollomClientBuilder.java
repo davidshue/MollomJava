@@ -274,8 +274,9 @@ public class MollomClientBuilder {
     WebResource contentResource = rootResource.path("content");
     WebResource captchaResource = rootResource.path("captcha");
     WebResource feedbackResource = rootResource.path("feedback");
+    WebResource blacklistResource = rootResource.path("blacklist").path(publicKey);
     
-    MollomClient mollomClient = new MollomClient(client, contentResource, captchaResource, feedbackResource,
+    MollomClient mollomClient = new MollomClient(client, contentResource, captchaResource, feedbackResource, blacklistResource,
         retries, acceptAllPostsOnError, debugMode);
     return mollomClient;
   }

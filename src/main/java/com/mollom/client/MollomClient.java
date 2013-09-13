@@ -25,6 +25,7 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
@@ -44,18 +45,20 @@ public class MollomClient {
   private final WebResource contentResource;
   private final WebResource captchaResource;
   private final WebResource feedbackResource;
+  private final WebResource blacklistResource;
 
   /**
    * MollomClient instances are expensive resources. It is recommended that a single MollomClient
    * instance is shared between multiple threads. The building of requests and receiving of
    * responses is guaranteed to be thread safe.
    */
-  MollomClient(Client client, WebResource contentResource, WebResource captchaResource, WebResource feedbackResource,
+  MollomClient(Client client, WebResource contentResource, WebResource captchaResource, WebResource feedbackResource, WebResource blacklistResource,
       int retries, boolean acceptAllPostsOnError, boolean debugMode) {
     this.client = client;
     this.contentResource = contentResource;
     this.captchaResource = captchaResource;
     this.feedbackResource = feedbackResource;
+    this.blacklistResource = blacklistResource;
 
     this.retries = retries;
     this.acceptAllPostsOnError = acceptAllPostsOnError;
@@ -305,6 +308,57 @@ public class MollomClient {
   }
 
   /**
+   * Saves a blacklist entry to Mollom.
+   * If the blacklist entry already exists, update Mollom with the new properties.
+   */
+  public void saveBlacklistEntry(BlacklistEntry blacklistEntry) {
+    MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
+    postParams.putSingle("value", blacklistEntry.getValue());
+    postParams.putSingle("reason", blacklistEntry.getReason());
+    postParams.putSingle("context", blacklistEntry.getContext());
+    postParams.putSingle("match", blacklistEntry.getMatch());
+    postParams.putSingle("status", blacklistEntry.isEnabled() ? "1" : "0");
+    postParams.putSingle("note", blacklistEntry.getNote());
+
+    if (blacklistEntry.getId() != null) { // Update existing entry
+      request("post", blacklistResource.path(blacklistEntry.getId()), postParams);
+    } else { // Create new entry
+      request("post", blacklistResource, postParams);
+    }
+  }
+
+  /**
+   * Deletes a blacklist entry from Mollom.
+   */
+  public void deleteBlacklistEntry(BlacklistEntry blacklistEntry) {
+    request("post", blacklistResource.path(blacklistEntry.getId()).path("delete"), new MultivaluedMapImpl());
+  }
+
+  /**
+   * @return A list of all of the blacklist entries (owned by this public key).
+   */
+  public List<BlacklistEntry> listBlacklistEntries() {
+    ClientResponse response = request("get", blacklistResource, new MultivaluedMapImpl());
+    if (response != null) { // Success
+      return parseList(response.getEntity(String.class), "entry", BlacklistEntry.class);
+    } else { // Failure
+      return new ArrayList<>();
+    }
+  }
+
+  /**
+   * @return The blacklist entry wtih the given id. (or null if one doesn't exist)
+   */
+  public BlacklistEntry getBlacklistEntry(String blacklistEntryId) {
+    ClientResponse response = request("get", blacklistResource.path(blacklistEntryId), new MultivaluedMapImpl());
+    if (response != null) { // Success
+      return parseBody(response.getEntity(String.class), "entry", BlacklistEntry.class);
+    } else { // Failure
+      return null;
+    }
+  }
+
+  /**
    * Destroy the MollomClient object. Not doing this can cause connection leaks.
    * The MollomClient must not be reused after this method is called otherwise undefined behavior will occur.
    */
@@ -352,6 +406,25 @@ public class MollomClient {
       Document document = documentBuilder.parse(new InputSource(new StringReader(xml)));
       Node bodyNode = document.getElementsByTagName(bodyTag).item(0);
       return unmarshaller.unmarshal(bodyNode, expectedType).getValue();
+    } catch (SAXException | IOException | JAXBException e) {
+      throw new MollomRequestException("Issue parsing response from Mollom server.", e);
+    }
+  }
+
+  private <T> List<T> parseList(String xml, String bodyTag, Class<T> expectedType) {
+    try {
+      // We have to parse the xml into a document first before passing it to JAXB to get the body
+      // because the Mollom service returns the object wrapped in a <Response> object
+      Document document = documentBuilder.parse(new InputSource(new StringReader(xml)));
+
+      List<T> list = new ArrayList<>();
+      Node listNode = document.getElementsByTagName("list").item(0);
+      NodeList bodyNodes = listNode.getChildNodes();
+      for (int i = 0; i < bodyNodes.getLength(); i++) {
+        Node bodyNode = bodyNodes.item(i);
+        list.add(unmarshaller.unmarshal(bodyNode, expectedType).getValue());
+      }
+      return list;
     } catch (SAXException | IOException | JAXBException e) {
       throw new MollomRequestException("Issue parsing response from Mollom server.", e);
     }
