@@ -23,6 +23,13 @@ public class BlacklistEntry {
   private String match;
   private String note;
 
+  public BlacklistEntry() {
+    reason = BlacklistReason.UNWANTED.toString();
+    context = Context.ALLFIELDS.toString();
+    match = BlacklistMatchPrecision.CONTAINS.toString();
+    status = 1;
+  }
+
   /**
    * @return Unique blacklist entry ID assigned by Mollom.
    */
@@ -106,22 +113,37 @@ public class BlacklistEntry {
     this.matchCount = matchCount;
   }
 
+  /**
+   * @param value The string/value to blacklist.
+   */
   public void setValue(String value) {
     this.value = value;
   }
 
+  /**
+   * @param reason The reason for why the value is blacklisted.
+   */
   public void setReason(BlacklistReason reason) {
     this.reason = reason.toString();
   }
 
+  /**
+   * @oaram context Where the entry's value may match.
+   */
   public void setContext(Context context) {
     this.context = context.toString();
   }
 
+  /**
+   * @param match How precise the entry's value may match.
+   */
   public void setMatch(BlacklistMatchPrecision match) {
     this.match = match.toString();
   }
 
+  /**
+   * @param note A custom string explaining the entry. Useful in a multi-moderator scenario.
+   */
   public void setNote(String note) {
     this.note = note;
   }
