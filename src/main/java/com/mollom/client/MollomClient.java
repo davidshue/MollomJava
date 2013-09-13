@@ -41,8 +41,8 @@ public class MollomClient {
   private final Unmarshaller unmarshaller;
   private final DocumentBuilder documentBuilder;
 
-  private final WebResource captchaResource;
   private final WebResource contentResource;
+  private final WebResource captchaResource;
   private final WebResource feedbackResource;
 
   /**
@@ -50,16 +50,16 @@ public class MollomClient {
    * instance is shared between multiple threads. The building of requests and receiving of
    * responses is guaranteed to be thread safe.
    */
-  MollomClient(Client client, WebResource rootResource, int retries, boolean acceptAllPostsOnError, boolean debugMode) {
+  MollomClient(Client client, WebResource contentResource, WebResource captchaResource, WebResource feedbackResource,
+      int retries, boolean acceptAllPostsOnError, boolean debugMode) {
     this.client = client;
+    this.contentResource = contentResource;
+    this.captchaResource = captchaResource;
+    this.feedbackResource = feedbackResource;
+
     this.retries = retries;
     this.acceptAllPostsOnError = acceptAllPostsOnError;
     this.debugMode = debugMode;
-
-    // Initialize the resources
-    captchaResource = rootResource.path("captcha");
-    contentResource = rootResource.path("content");
-    feedbackResource = rootResource.path("feedback");
 
     try {
       JAXBContext jaxbContext = JAXBContext.newInstance(Content.class, Captcha.class);
@@ -120,60 +120,45 @@ public class MollomClient {
     postParams.putSingle("contextUrl", content.getContextUrl());
     postParams.putSingle("contextTitle", content.getContextTitle());
 
-    for (int retryAttemptNumber = 0; retryAttemptNumber <= retries; retryAttemptNumber++) {
-      try {
-        // If the user passes in a brand new Content object, map to the Create Content API
-        // If the user passes in a previously checked Content object, map to the Update (and re-check) Content API
-        ClientResponse response;
-        if (content.getId() == null) { // Check new content
-          response = contentResource
-              .accept(MediaType.APPLICATION_XML).type(MediaType.APPLICATION_FORM_URLENCODED)
-              .post(ClientResponse.class, postParams);
-        } else { // Recheck existing content
-          response = contentResource.path(content.getId())
-              .accept(MediaType.APPLICATION_XML).type(MediaType.APPLICATION_FORM_URLENCODED)
-              .post(ClientResponse.class, postParams);
-        }
+    // If the user passes in a brand new Content object, map to the Create Content API
+    // If the user passes in a previously checked Content object, map to the Update (and re-check) Content API
+    ClientResponse response;
+    if (content.getId() == null) { // Check new content
+      response = request("post", contentResource, postParams);
+    } else { // Recheck existing content
+      response = request("post", contentResource.path(content.getId()), postParams);
+    }
+    if (response != null) { // Success
+      // Get the returned content from the Mollom service
+      Content returnedContent = parseBody(response.getEntity(String.class), "content", Content.class);
 
-        if (response.getStatus() < 200 || response.getStatus() >= 300) { // Was not a successful call
-          // Parse out the error message from the response to use as the exception message
-          throw new MollomRequestException(response.getEntity(String.class));
-        } else { // Success
-          // Get the returned content from the Mollom service
-          Content returnedContent = parseBody(response.getEntity(String.class), "content", Content.class);
+      // Inject the Mollom assigned ID
+      content.setId(returnedContent.getId());
 
-          content.setId(returnedContent.getId());
-
-          // Merge classification results into the original Content object
-          List<Check> requestedChecks = Arrays.asList(content.getChecks());
-          if (requestedChecks.contains(Check.SPAM)) {
-            content.setSpamClassification(returnedContent.getSpamClassification());
-            content.setSpamScore(returnedContent.getSpamScore());
-          }
-          if (requestedChecks.contains(Check.QUALITY)) {
-            content.setQualityScore(returnedContent.getQualityScore());
-          }
-          if (requestedChecks.contains(Check.PROFANITY)) {
-            content.setProfanityScore(returnedContent.getProfanityScore());
-          }
-          if (requestedChecks.contains(Check.LANGUAGE)) {
-            content.setLanguages(returnedContent.getLanguages());
-          }
-        }
-        break; // Don't try again if succeeded
-      } catch (ClientHandlerException | MollomRequestException e) {
-        if (debugMode) {
-          throw new MollomRequestException("Problem checking content.", e);
-        } else if (acceptAllPostsOnError) {
-          content.setSpamClassification("ham");
-          content.setSpamScore(0.0);
-          content.setReason("error");
-        } else {
-          content.setSpamClassification("spam");
-          content.setSpamScore(1.0);
-          content.setReason("error");
-        }
-        logger.log(Level.SEVERE, "Problem checking content.", e);
+      // Merge classification results into the original Content object
+      List<Check> requestedChecks = Arrays.asList(content.getChecks());
+      if (requestedChecks.contains(Check.SPAM)) {
+        content.setSpamClassification(returnedContent.getSpamClassification());
+        content.setSpamScore(returnedContent.getSpamScore());
+      }
+      if (requestedChecks.contains(Check.QUALITY)) {
+        content.setQualityScore(returnedContent.getQualityScore());
+      }
+      if (requestedChecks.contains(Check.PROFANITY)) {
+        content.setProfanityScore(returnedContent.getProfanityScore());
+      }
+      if (requestedChecks.contains(Check.LANGUAGE)) {
+        content.setLanguages(returnedContent.getLanguages());
+      }
+    } else { // Failure
+      if (acceptAllPostsOnError) {
+        content.setSpamClassification("ham");
+        content.setSpamScore(0.0);
+        content.setReason("error");
+      } else {
+        content.setSpamClassification("spam");
+        content.setSpamScore(1.0);
+        content.setReason("error");
       }
     }
   }
@@ -205,26 +190,10 @@ public class MollomClient {
     postParams.putSingle("ssl", ssl ? "1" : "0");
     postParams.putSingle("contentId", content.getId());
     
-    for (int retryAttemptNumber = 0; retryAttemptNumber <= retries; retryAttemptNumber++) {
-      try {
-        ClientResponse response = captchaResource
-            .accept(MediaType.APPLICATION_XML).type(MediaType.APPLICATION_FORM_URLENCODED)
-            .post(ClientResponse.class, postParams);
-        if (response.getStatus() < 200 || response.getStatus() >= 300) { // Was not a successful call
-          // Parse out the error message from the response to use as the exception message
-          throw new MollomRequestException(response.getEntity(String.class));
-        } else { // Success
-          return parseBody(response.getEntity(String.class), "captcha", Captcha.class);
-        }
-      } catch (ClientHandlerException clientHandlerException) {
-        // Ignore client handler exceptions and retry
-      }
-    }
-
-    if (debugMode) {
-      throw new MollomRequestException("Failed to contact the Mollom servers to create captcha.");
-    } else {
-      logger.log(Level.SEVERE, "Failed to contact the Mollom service to create CAPTCHA.");
+    ClientResponse response = request("post", captchaResource, postParams);
+    if (response != null) { // Success
+      return parseBody(response.getEntity(String.class), "captcha", Captcha.class);
+    } else { // Failure
       return null;
     }
   }
@@ -246,32 +215,18 @@ public class MollomClient {
     postParams.putSingle("authorIp", captcha.getAuthorIp());
     postParams.putSingle("authorId", captcha.getAuthorId());
 
-    for (int retryAttemptNumber = 0; retryAttemptNumber <= retries; retryAttemptNumber++) {
-      try {
-        ClientResponse response = captchaResource
-            .path(captcha.getId())
-            .accept(MediaType.APPLICATION_XML).type(MediaType.APPLICATION_FORM_URLENCODED)
-            .post(ClientResponse.class, postParams);
-        if (response.getStatus() < 200 || response.getStatus() >= 300) { // Was not a successful call
-          // Parse out the error message from the response to use as the exception message
-          throw new MollomRequestException(response.getEntity(String.class));
-        } else { // Success
-          Captcha returnedCaptcha = parseBody(response.getEntity(String.class), "captcha", Captcha.class);
-          captcha.setSolved(returnedCaptcha.isSolved() ? 1 : 0);
-          captcha.setReason(returnedCaptcha.getReason());
-        }
-        break; // Don't try again if succeeded
-      } catch (ClientHandlerException | MollomRequestException e) {
-        if (debugMode) {
-          throw new MollomRequestException("Problem checking captcha.", e);
-        } else if (acceptAllPostsOnError) {
-          captcha.setSolved(1);
-          captcha.setReason("error");
-        } else {
-          captcha.setSolved(0);
-          captcha.setReason("error");
-        }
-        logger.log(Level.SEVERE, "Problem checking captcha.", e);
+    ClientResponse response = request("post", captchaResource.path(captcha.getId()), postParams);
+    if (response != null) { // Success
+      Captcha returnedCaptcha = parseBody(response.getEntity(String.class), "captcha", Captcha.class);
+      captcha.setSolved(returnedCaptcha.isSolved() ? 1 : 0);
+      captcha.setReason(returnedCaptcha.getReason());
+    } else { // Failure
+      if (acceptAllPostsOnError) {
+        captcha.setSolved(1);
+        captcha.setReason("error");
+      } else {
+        captcha.setSolved(0);
+        captcha.setReason("error");
       }
     }
   }
@@ -305,16 +260,7 @@ public class MollomClient {
       postParams.putSingle("captchaId", captcha.getId());
     }
     postParams.putSingle("reason", feedback.toString().toLowerCase());
-    for (int retryAttemptNumber = 0; retryAttemptNumber <= retries; retryAttemptNumber++) {
-      try {
-        feedbackResource.accept(MediaType.APPLICATION_XML).type(MediaType.APPLICATION_FORM_URLENCODED).post(ClientResponse.class, postParams);
-      } catch (ClientHandlerException e) {
-        if (debugMode) {
-          throw new MollomRequestException("Problem sending feedback.", e);
-        }
-        logger.log(Level.SEVERE, "Problem sending feedback.", e);
-      }
-    }
+    request("post", feedbackResource, postParams);
   }
 
   /**
@@ -342,21 +288,7 @@ public class MollomClient {
     content.setUrl(url);
     content.setContextUrl(contextUrl);
     content.setContextTitle(contextTitle);
-    for (int retryAttemptNumber = 0; retryAttemptNumber <= retries; retryAttemptNumber++) {
-      try {
-        checkContent(content);
-        return; // If we've successfully checked the content, stop here
-      } catch (ClientHandlerException clientHandlerException) {
-        // Ignore client handler exceptions and retry
-      }
-    }
-    // If we failed to contact Mollom, just swallow the exception and log an error
-    // The fact that Mollom is down shouldn't affect the user's site here
-    if (debugMode) {
-      throw new MollomRequestException("Failed to mark content as stored.");
-    } else {
-      logger.log(Level.SEVERE, "Failed to contact the Mollom service to mark content as stored.");
-    }
+    checkContent(content);
   }
 
   /**
@@ -369,21 +301,7 @@ public class MollomClient {
   public void markAsDeleted(Content content) {
     content.setChecks(); // Don't re-check anything
     content.setStored(false);
-    for (int retryAttemptNumber = 0; retryAttemptNumber <= retries; retryAttemptNumber++) {
-      try {
-        checkContent(content);
-        return; // If we've successfully checked the content, stop here
-      } catch (ClientHandlerException clientHandlerException) {
-        // Ignore client handler exceptions and retry
-      }
-    }
-    // If we failed to contact Mollom, just swallow the exception and log an error
-    // The fact that Mollom is down shouldn't affect the user's site here
-    if (debugMode) {
-      throw new MollomRequestException("Failed to mark content as deleted.");
-    } else {
-      logger.log(Level.SEVERE, "Failed to contact the Mollom service to mark content as stored.");
-    }
+    checkContent(content);
   }
 
   /**
@@ -394,6 +312,30 @@ public class MollomClient {
     client.destroy();
   }
 
+  private ClientResponse request(String method, WebResource resource, MultivaluedMap<String, String> params) {
+    for (int retryAttemptNumber = 0; retryAttemptNumber <= retries; retryAttemptNumber++) {
+      try {
+        ClientResponse response = resource
+            .accept(MediaType.APPLICATION_XML)
+            .type(MediaType.APPLICATION_FORM_URLENCODED)
+            .method(method, ClientResponse.class, params);
+        if (response.getStatus() < 200 || response.getStatus() >= 300) {
+          if (debugMode) {
+            throw new MollomRequestException(response.getEntity(String.class));
+          }
+          return null;
+        }
+        return response;
+      } catch (ClientHandlerException e) {
+        logger.log(Level.SEVERE, "Failed to contact the Mollom server.");
+      }
+    }
+    if (debugMode) {
+      throw new MollomRequestException("Failed to contact the Mollom server after retries.");
+    }
+    return null;
+  }
+  
   /**
    * Expected xml in the format of:
    * <contentresponse> 

@@ -270,7 +270,13 @@ public class MollomClientBuilder {
       throw new MollomConfigurationException("Invalid public/private key.");
     }
 
-    MollomClient mollomClient = new MollomClient(client, rootResource, retries, acceptAllPostsOnError, debugMode);
+    // Initialize the resources
+    WebResource contentResource = rootResource.path("content");
+    WebResource captchaResource = rootResource.path("captcha");
+    WebResource feedbackResource = rootResource.path("feedback");
+    
+    MollomClient mollomClient = new MollomClient(client, contentResource, captchaResource, feedbackResource,
+        retries, acceptAllPostsOnError, debugMode);
     return mollomClient;
   }
 }
