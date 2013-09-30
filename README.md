@@ -18,7 +18,8 @@ MollomClient client = MollomClientBuilder.create()
     .withPlatformName("Example Application")
     .withPlatformVersion("1.0")
     // ... More client configurations ...
-    .withPrivateKey("private_key");
+    .withPrivateKey("private_key")
+    .build();
 
 // create a new Content to check
 Content content = new Content();
@@ -57,7 +58,8 @@ Adding blacklist entry
 MollomClient client = MollomClientBuilder.create()
     .withPublicKey("public_key")
     // ... More client configurations ...
-    .withPrivateKey("private_key");
+    .withPrivateKey("private_key")
+    .build();
     
 BlacklistEntry entry = new BlacklistEntry();
 entry.setValue("spammyspamspam");
@@ -72,7 +74,8 @@ Updating blacklist entry
 MollomClient client = MollomClientBuilder.create()
     .withPublicKey("public_key")
     // ... More client configurations ...
-    .withPrivateKey("private_key");
+    .withPrivateKey("private_key")
+    .build();
     
 // Id of blacklist entry to update;
 // Can also just list all of the blacklist entries using client.listBlacklistEntries();
@@ -91,7 +94,8 @@ Adding whitelist entry
 MollomClient client = MollomClientBuilder.create()
     .withPublicKey("public_key")
     // ... More client configurations ...
-    .withPrivateKey("private_key");
+    .withPrivateKey("private_key")
+    .build();
     
 WhitelistEntry entry = new WhitelistEntry();
 entry.setValue("nice_guy");
@@ -107,7 +111,8 @@ Updating whitelist entry
 MollomClient client = MollomClientBuilder.create()
     .withPublicKey("public_key")
     // ... More client configurations ...
-    .withPrivateKey("private_key");
+    .withPrivateKey("private_key")
+    .build();
     
 // Id of whitelist entry to update;
 // Can also just list all of the whitelist entries using client.listWhitelistEntries();
@@ -125,7 +130,8 @@ Sending feedback
 MollomClient client = MollomClientBuilder.create()
     .withPublicKey("public_key")
     // ... More client configurations ...
-    .withPrivateKey("private_key");
+    .withPrivateKey("private_key")
+    .build();
 
 // Previously checked content that was incorrectly classified
 Content content; 
