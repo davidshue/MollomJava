@@ -28,10 +28,6 @@ public class MollomClientBuilder {
   private static final boolean DEFAULT_ACCEPT_ALL_POSTS_ON_ERROR = false;
   private static final boolean DEFAULT_DEBUG_MODE = false;
 
-  // Client authentication
-  private String publicKey;
-  private String privateKey;
-
   // Client behavior settings
   private boolean testing;
   private String apiVersion;
@@ -61,24 +57,6 @@ public class MollomClientBuilder {
     clientName = DEFAULT_CLIENT_NAME;
     clientVersion = DEFAULT_CLIENT_VERSION;
     debugMode = DEFAULT_DEBUG_MODE;
-  }
-
-  /**
-   * Required property.
-   * Set the public API key of the site.
-   */
-  public MollomClientBuilder withPublicKey(String publicKey) {
-    this.publicKey = publicKey;
-    return this;
-  }
-  
-  /**
-   * Required property.
-   * Set the private API key of the site.
-   */
-  public MollomClientBuilder withPrivateKey(String privateKey) {
-    this.privateKey = privateKey;
-    return this;
   }
   
   /**
@@ -238,7 +216,7 @@ public class MollomClientBuilder {
    * 
    * @throws MollomConfigurationException If could not authenticate with the Mollom service.
    */
-  public MollomClient build() {
+  public MollomClient build(String publicKey, String privateKey) {
     Client client = new Client();
     client.setConnectTimeout(connectionTimeout);
     client.setReadTimeout(readTimeout);

@@ -14,12 +14,10 @@ Checking content
 ```java
 // create a new mollom client
 MollomClient client = MollomClientBuilder.create()
-    .withPublicKey("public_key")
     .withPlatformName("Example Application")
     .withPlatformVersion("1.0")
     // ... More client configurations ...
-    .withPrivateKey("private_key")
-    .build();
+    .build("publicKey", "privateKey");
 
 // create a new Content to check
 Content content = new Content();
@@ -56,10 +54,8 @@ Adding blacklist entry
 ```java
 // create a new mollom client
 MollomClient client = MollomClientBuilder.create()
-    .withPublicKey("public_key")
     // ... More client configurations ...
-    .withPrivateKey("private_key")
-    .build();
+    .build("publicKey", "privateKey");
     
 BlacklistEntry entry = new BlacklistEntry();
 entry.setValue("spammyspamspam");
@@ -72,10 +68,8 @@ client.destroy();
 Updating blacklist entry
 ```java
 MollomClient client = MollomClientBuilder.create()
-    .withPublicKey("public_key")
     // ... More client configurations ...
-    .withPrivateKey("private_key")
-    .build();
+    .build("publicKey", "privateKey");
     
 // Id of blacklist entry to update;
 // Can also just list all of the blacklist entries using client.listBlacklistEntries();
@@ -92,10 +86,8 @@ Adding whitelist entry
 ```java
 // create a new mollom client
 MollomClient client = MollomClientBuilder.create()
-    .withPublicKey("public_key")
     // ... More client configurations ...
-    .withPrivateKey("private_key")
-    .build();
+    .build("publicKey", "privateKey");
     
 WhitelistEntry entry = new WhitelistEntry();
 entry.setValue("nice_guy");
@@ -109,10 +101,8 @@ client.destroy();
 Updating whitelist entry
 ```java
 MollomClient client = MollomClientBuilder.create()
-    .withPublicKey("public_key")
     // ... More client configurations ...
-    .withPrivateKey("private_key")
-    .build();
+    .build("publicKey", "privateKey");
     
 // Id of whitelist entry to update;
 // Can also just list all of the whitelist entries using client.listWhitelistEntries();
@@ -128,10 +118,8 @@ client.destroy();
 Sending feedback
 ```java
 MollomClient client = MollomClientBuilder.create()
-    .withPublicKey("public_key")
     // ... More client configurations ...
-    .withPrivateKey("private_key")
-    .build();
+    .build("publicKey", "privateKey");
 
 // Previously checked content that was incorrectly classified
 Content content; 
