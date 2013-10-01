@@ -25,7 +25,12 @@ content.setAuthorIp("192.168.1.1");
 content.setPostBody("This is a test comment.");
 // ... More content properties ...
 
-client.checkContent(content);
+try {
+    client.checkContent(content);
+} catch(MollomException e) {
+    // Problem with the Mollom service (due to invalid request or Mollom downtime)
+    // failover/fallback strategy
+}
 
 if (content.isHam()) {
     // Accept content
@@ -59,7 +64,13 @@ MollomClient client = MollomClientBuilder.create()
     
 BlacklistEntry entry = new BlacklistEntry();
 entry.setValue("spammyspamspam");
-client.saveBlacklistEntry(entry);
+
+try {
+    client.saveBlacklistEntry(entry);
+} catch(MollomException e) {
+    // Problem with the Mollom service (usually due to Mollom downtime)
+    // failover/fallback strategy
+}
 
 // Cleanup
 client.destroy();
@@ -76,7 +87,13 @@ MollomClient client = MollomClientBuilder.create()
 String blacklistEntryId; 
 BlacklistEntry entry = client.getBlacklistEntry(blacklistEntryId);
 entry.setValue("newspammyspam");
-client.saveBlacklistEntry(entry);
+
+try {
+    client.saveBlacklistEntry(entry);
+} catch(MollomException e) {
+    // Problem with the Mollom service (usually due to Mollom downtime)
+    // failover/fallback strategy
+}
 
 // Cleanup
 client.destroy();
@@ -92,7 +109,13 @@ MollomClient client = MollomClientBuilder.create()
 WhitelistEntry entry = new WhitelistEntry();
 entry.setValue("nice_guy");
 entry.setContext(Context.AUTHORID);
-client.saveWhitelistEntry(entry);
+
+try {
+    client.saveWhitelistEntry(entry);
+} catch(MollomException e) {
+    // Problem with the Mollom service (usually due to Mollom downtime)
+    // failover/fallback strategy
+}
 
 // Cleanup
 client.destroy();
@@ -109,7 +132,13 @@ MollomClient client = MollomClientBuilder.create()
 String whitelistEntryId; 
 WhitelistEntry entry = client.getWhitelistEntry(whitelistEntryId);
 entry.setValue("nice_girl");
-client.saveWhitelistEntry(entry);
+
+try {
+    client.saveWhitelistEntry(entry);
+} catch(MollomException e) {
+    // Problem with the Mollom service (usually due to Mollom downtime)
+    // failover/fallback strategy
+}
 
 // Cleanup
 client.destroy();
@@ -124,7 +153,12 @@ MollomClient client = MollomClientBuilder.create()
 // Previously checked content that was incorrectly classified
 Content content; 
 
-client.sendFeedback(content, FeedbackReason.SPAM);
+try { 
+    client.sendFeedback(content, FeedbackReason.SPAM);
+} catch(MollomException e) {
+    // Problem with the Mollom service (usually due to Mollom downtime)
+    // failover/fallback strategy
+}
 
 // Cleanup
 client.destroy();
