@@ -6,7 +6,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 /**
  * Mollom automatically blocks unwanted content and learns from all participating sites to improve its filters.
- * On top of automatic filtering, you can define a custom blacklist.
+ * On top of automatic filtering, you can define a custom whitelist.
  * Whitelist entries are checked first. On a positive whitelist match, no other checks are performed.
  *    Content API's spam check returns ham.
  *    Content API's profanity check returns non-profane.
