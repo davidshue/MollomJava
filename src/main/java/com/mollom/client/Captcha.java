@@ -23,6 +23,10 @@ public class Captcha {
   private int solved;
   private String reason;
 
+  public Captcha() {
+    solved = -1;
+  }
+
   public String getId() {
     return id;
   }
@@ -72,6 +76,10 @@ public class Captcha {
   }
 
   public boolean isSolved() {
+    if (solved == -1) {
+      throw new MollomIllegalUsageException("Cannot check whether or not a CAPTCHA is solved without calling checkCaptcha first.");
+    }
+
     return solved == 1;
   }
 }

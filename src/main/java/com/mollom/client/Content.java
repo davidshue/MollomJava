@@ -80,12 +80,12 @@ public class Content {
    * Depending on the Mollom subscription plan, the returned scores can be real values between 0 and 1.
    * 
    * @return The determined spaminess of the content.
-   * @throws MollomRequestException
+   * @throws MollomException
    *           If a QUALITY check was not performed beforehand.
    */
   public double getSpamScore() {
     if (spamScore == -1) {
-      throw new MollomConfigurationException("Spam score cannot be determined without doing a SPAM check first.");
+      throw new MollomIllegalUsageException("Spam score cannot be determined without doing a SPAM check first.");
     }
     return spamScore;
   }
@@ -97,12 +97,12 @@ public class Content {
    * Depending on the Mollom subscription plan, the returned scores can be real values between 0 and 1.
    * 
    * @return The determined profanity of the content.
-   * @throws MollomRequestException
+   * @throws MollomException
    *           If a PROFANITY check was not performed beforehand.
    */
   public double getProfanityScore() {
     if (profanityScore == -1) {
-      throw new MollomConfigurationException("Profanity score cannot be determined without doing a PROFANITY check first.");
+      throw new MollomIllegalUsageException("Profanity score cannot be determined without doing a PROFANITY check first.");
     }
     return profanityScore;
   }
@@ -115,12 +115,12 @@ public class Content {
    * Depending on the Mollom subscription plan, the returned scores can be real values between 0 and 1.
    * 
    * @return The determined quality of the content.
-   * @throws MollomRequestException
+   * @throws MollomException
    *           If a QUALITY check was not performed beforehand.
    */
   public double getQualityScore() {
     if (qualityScore == -1) {
-      throw new MollomConfigurationException("Quality score cannot be determined without doing a QUALITY check first.");
+      throw new MollomIllegalUsageException("Quality score cannot be determined without doing a QUALITY check first.");
     }
     return qualityScore;
   }
@@ -134,12 +134,12 @@ public class Content {
 
   /**
    * @return Detected language(s) for the content.
-   * @throws MollomRequestException
+   * @throws MollomException
    *           If a LANGUAGE check was not performed beforehand.
    */
   public Language[] getLanguages() {
     if (languages == null) {
-      throw new MollomConfigurationException("Language cannot be determined without doing a LANGUAGES check first.");
+      throw new MollomIllegalUsageException("Language cannot be determined without doing a LANGUAGES check first.");
     }
     return languages;
   }
@@ -178,24 +178,24 @@ public class Content {
 
   /**
    * @return Whether the content is "ham" or desirable.
-   * @throws MollomRequestException
+   * @throws MollomException
    *           If a SPAM check was not performed beforehand.
    */
   public boolean isHam() {
     if (spamClassification == null) {
-      throw new MollomConfigurationException("Spamminess of content cannot be determined without doing a SPAM check first.");
+      throw new MollomIllegalUsageException("Spamminess of content cannot be determined without doing a SPAM check first.");
     }
     return "ham".equals(spamClassification);
   }
 
   /**
    * @return Whether the content is "spam" or undesirable.
-   * @throws MollomRequestException
+   * @throws MollomException
    *           If a SPAM check was not performed beforehand.
    */
   public boolean isSpam() {
     if (spamClassification == null) {
-      throw new MollomConfigurationException("Spamminess of content cannot be determined without doing a SPAM check first.");
+      throw new MollomIllegalUsageException("Spamminess of content cannot be determined without doing a SPAM check first.");
     }
     return "spam".equals(spamClassification);
   }
@@ -204,12 +204,12 @@ public class Content {
    * If the Content is determined to be unsure, it is recommended that a CAPTCHA is presented to the user.
    * 
    * @return Whether the content is "unsure" or Mollom isn't sure whether it is desirable or not.
-   * @throws MollomRequestException
+   * @throws MollomException
    *           If a SPAM check was not performed beforehand.
    */
   public boolean isUnsure() {
     if (spamClassification == null) {
-      throw new MollomConfigurationException("Spamminess of content cannot be determined without doing a SPAM check first.");
+      throw new MollomIllegalUsageException("Spamminess of content cannot be determined without doing a SPAM check first.");
     }
     return "unsure".equals(spamClassification);
   }
