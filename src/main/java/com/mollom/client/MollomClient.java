@@ -36,8 +36,6 @@ public class MollomClient {
   private final static Logger logger = Logger.getLogger("com.mollom.client.MollomClient");
   private final Client client;
   private final int retries;
-  private final boolean acceptAllPostsOnError;
-  private final boolean debugMode;
 
   private final Unmarshaller unmarshaller;
   private final DocumentBuilder documentBuilder;
@@ -54,8 +52,7 @@ public class MollomClient {
    * responses is guaranteed to be thread safe.
    */
   MollomClient(Client client, WebResource contentResource, WebResource captchaResource, WebResource feedbackResource, 
-      WebResource blacklistResource, WebResource whitelistResource,
-      int retries, boolean acceptAllPostsOnError, boolean debugMode) {
+      WebResource blacklistResource, WebResource whitelistResource, int retries) {
     this.client = client;
     this.contentResource = contentResource;
     this.captchaResource = captchaResource;
@@ -64,8 +61,6 @@ public class MollomClient {
     this.whitelistResource = whitelistResource;
 
     this.retries = retries;
-    this.acceptAllPostsOnError = acceptAllPostsOnError;
-    this.debugMode = debugMode;
 
     try {
       JAXBContext jaxbContext = JAXBContext.newInstance(Content.class, Captcha.class, BlacklistEntry.class, WhitelistEntry.class);
@@ -89,7 +84,8 @@ public class MollomClient {
    * @throws MollomRequestException
    *           If the request failed and debug mode is enabled
    */
-  public void checkContent(Content content) {
+  public void checkContent(Content content) 
+      throws MollomRequestException {
     MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
     postParams.putSingle("postTitle", content.getPostTitle());
     postParams.putSingle("postBody", content.getPostBody());
@@ -134,38 +130,27 @@ public class MollomClient {
     } else { // Recheck existing content
       response = request("POST", contentResource.path(content.getId()), postParams);
     }
-    if (response != null) { // Success
-      // Get the returned content from the Mollom service
-      Content returnedContent = parseBody(response.getEntity(String.class), "content", Content.class);
 
-      // Inject the Mollom assigned ID
-      content.setId(returnedContent.getId());
+    // Get the returned content from the Mollom service
+    Content returnedContent = parseBody(response.getEntity(String.class), "content", Content.class);
 
-      // Merge classification results into the original Content object
-      List<Check> requestedChecks = Arrays.asList(content.getChecks());
-      if (requestedChecks.contains(Check.SPAM)) {
-        content.setSpamClassification(returnedContent.getSpamClassification());
-        content.setSpamScore(returnedContent.getSpamScore());
-      }
-      if (requestedChecks.contains(Check.QUALITY)) {
-        content.setQualityScore(returnedContent.getQualityScore());
-      }
-      if (requestedChecks.contains(Check.PROFANITY)) {
-        content.setProfanityScore(returnedContent.getProfanityScore());
-      }
-      if (requestedChecks.contains(Check.LANGUAGE)) {
-        content.setLanguages(returnedContent.getLanguages());
-      }
-    } else { // Failure
-      if (acceptAllPostsOnError) {
-        content.setSpamClassification("ham");
-        content.setSpamScore(0.0);
-        content.setReason("error");
-      } else {
-        content.setSpamClassification("spam");
-        content.setSpamScore(1.0);
-        content.setReason("error");
-      }
+    // Inject the Mollom assigned ID
+    content.setId(returnedContent.getId());
+
+    // Merge classification results into the original Content object
+    List<Check> requestedChecks = Arrays.asList(content.getChecks());
+    if (requestedChecks.contains(Check.SPAM)) {
+      content.setSpamClassification(returnedContent.getSpamClassification());
+      content.setSpamScore(returnedContent.getSpamScore());
+    }
+    if (requestedChecks.contains(Check.QUALITY)) {
+      content.setQualityScore(returnedContent.getQualityScore());
+    }
+    if (requestedChecks.contains(Check.PROFANITY)) {
+      content.setProfanityScore(returnedContent.getProfanityScore());
+    }
+    if (requestedChecks.contains(Check.LANGUAGE)) {
+      content.setLanguages(returnedContent.getLanguages());
     }
   }
 
@@ -178,7 +163,8 @@ public class MollomClient {
    * @throws MollomRequestException
    *           If the request failed and debug mode is enabled
    */
-  public Captcha createCaptcha(CaptchaType captchaType, boolean ssl) {
+  public Captcha createCaptcha(CaptchaType captchaType, boolean ssl) 
+      throws MollomRequestException {
     return createCaptcha(captchaType, ssl, null);
   }
 
@@ -190,18 +176,15 @@ public class MollomClient {
    * @throws MollomRequestException
    *           If the request failed and debug mode is enabled
    */
-  public Captcha createCaptcha(CaptchaType captchaType, boolean ssl, Content content) {
+  public Captcha createCaptcha(CaptchaType captchaType, boolean ssl, Content content) 
+      throws MollomRequestException {
     MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
     postParams.putSingle("type", captchaType.toString());
     postParams.putSingle("ssl", ssl ? "1" : "0");
     postParams.putSingle("contentId", content.getId());
     
     ClientResponse response = request("POST", captchaResource, postParams);
-    if (response != null) { // Success
-      return parseBody(response.getEntity(String.class), "captcha", Captcha.class);
-    } else { // Failure
-      return null;
-    }
+    return parseBody(response.getEntity(String.class), "captcha", Captcha.class);
   }
 
   /**
@@ -215,26 +198,17 @@ public class MollomClient {
    * @throws MollomRequestException
    *           If the request failed and debug mode is enabled
    */
-  public void checkCaptcha(Captcha captcha) {
+  public void checkCaptcha(Captcha captcha) 
+      throws MollomRequestException {
     MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
     postParams.putSingle("solution", captcha.getSolution());
     postParams.putSingle("authorIp", captcha.getAuthorIp());
     postParams.putSingle("authorId", captcha.getAuthorId());
 
     ClientResponse response = request("POST", captchaResource.path(captcha.getId()), postParams);
-    if (response != null) { // Success
-      Captcha returnedCaptcha = parseBody(response.getEntity(String.class), "captcha", Captcha.class);
-      captcha.setSolved(returnedCaptcha.isSolved() ? 1 : 0);
-      captcha.setReason(returnedCaptcha.getReason());
-    } else { // Failure
-      if (acceptAllPostsOnError) {
-        captcha.setSolved(1);
-        captcha.setReason("error");
-      } else {
-        captcha.setSolved(0);
-        captcha.setReason("error");
-      }
-    }
+    Captcha returnedCaptcha = parseBody(response.getEntity(String.class), "captcha", Captcha.class);
+    captcha.setSolved(returnedCaptcha.isSolved() ? 1 : 0);
+    captcha.setReason(returnedCaptcha.getReason());
   }
 
   /**
@@ -244,7 +218,8 @@ public class MollomClient {
    * should be built into all Mollom applications.
    * Feedback also affects the reputation of the author of the content.
    */
-  public void sendFeedback(Content content, FeedbackReason feedback) {
+  public void sendFeedback(Content content, FeedbackReason feedback) 
+      throws MollomRequestException {
     sendFeedback(content, null, feedback);
   }
 
@@ -253,11 +228,13 @@ public class MollomClient {
    * Feedback affects the reputation of the author of the content.
    * This call should be used only when only using captchas. It is not necessary to send feedback for a captcha if it was associated with a Content already.
    */
-  public void sendFeedback(Captcha captcha, FeedbackReason feedback) {
+  public void sendFeedback(Captcha captcha, FeedbackReason feedback) 
+      throws MollomRequestException {
     sendFeedback(null, captcha, feedback);
   }
 
-  private void sendFeedback(Content content, Captcha captcha, FeedbackReason feedback) {
+  private void sendFeedback(Content content, Captcha captcha, FeedbackReason feedback) 
+      throws MollomRequestException {
     MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
     if (content != null) {
       postParams.putSingle("contentId", content.getId());
@@ -277,7 +254,8 @@ public class MollomClient {
    *           If the request failed and debug mode is enabled
    * @see MollomClient#markAsStored(Content, String, String, String)
    */
-  public void markAsStored(Content content) {
+  public void markAsStored(Content content) 
+      throws MollomRequestException {
     markAsStored(content, null, null, null);
   }
 
@@ -288,7 +266,8 @@ public class MollomClient {
    * @throws MollomRequestException
    *           If the request failed and debug mode is enabled
    */
-  public void markAsStored(Content content, String url, String contextUrl, String contextTitle) {
+  public void markAsStored(Content content, String url, String contextUrl, String contextTitle) 
+      throws MollomRequestException {
     content.setChecks(); // Don't re-check anything
     content.setStored(true);
     content.setUrl(url);
@@ -304,7 +283,8 @@ public class MollomClient {
    * @throws MollomRequestException
    *           If the request failed
    */
-  public void markAsDeleted(Content content) {
+  public void markAsDeleted(Content content) 
+      throws MollomRequestException {
     content.setChecks(); // Don't re-check anything
     content.setStored(false);
     checkContent(content);
@@ -314,7 +294,8 @@ public class MollomClient {
    * Saves a blacklist entry to Mollom.
    * If the blacklist entry already exists, update Mollom with the new properties.
    */
-  public void saveBlacklistEntry(BlacklistEntry blacklistEntry) {
+  public void saveBlacklistEntry(BlacklistEntry blacklistEntry) 
+      throws MollomRequestException {
     MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
     postParams.putSingle("value", blacklistEntry.getValue());
     postParams.putSingle("reason", blacklistEntry.getReason().toString());
@@ -329,53 +310,47 @@ public class MollomClient {
     } else { // Create new entry
       response = request("POST", blacklistResource, postParams);
     }
-    
-    if (response != null) { // Success
-      BlacklistEntry returnedBlacklistEntry = parseBody(response.getEntity(String.class), "entry", BlacklistEntry.class);
-      blacklistEntry.setCreated(returnedBlacklistEntry.getCreated());
-      blacklistEntry.setId(returnedBlacklistEntry.getId());
-      blacklistEntry.setLastMatch(returnedBlacklistEntry.getLastMatch());
-      blacklistEntry.setMatchCount(returnedBlacklistEntry.getMatchCount());
-      blacklistEntry.setStatus(returnedBlacklistEntry.isEnabled() ? 1 : 0);
-    }
+
+    BlacklistEntry returnedBlacklistEntry = parseBody(response.getEntity(String.class), "entry", BlacklistEntry.class);
+    blacklistEntry.setCreated(returnedBlacklistEntry.getCreated());
+    blacklistEntry.setId(returnedBlacklistEntry.getId());
+    blacklistEntry.setLastMatch(returnedBlacklistEntry.getLastMatch());
+    blacklistEntry.setMatchCount(returnedBlacklistEntry.getMatchCount());
+    blacklistEntry.setStatus(returnedBlacklistEntry.isEnabled() ? 1 : 0);
   }
 
   /**
    * Deletes a blacklist entry from Mollom.
    */
-  public void deleteBlacklistEntry(BlacklistEntry blacklistEntry) {
+  public void deleteBlacklistEntry(BlacklistEntry blacklistEntry) 
+      throws MollomRequestException {
     request("POST", blacklistResource.path(blacklistEntry.getId()).path("delete"), new MultivaluedMapImpl());
   }
 
   /**
    * @return A list of all of the blacklist entries (owned by this public key).
    */
-  public List<BlacklistEntry> listBlacklistEntries() {
+  public List<BlacklistEntry> listBlacklistEntries() 
+      throws MollomRequestException {
     ClientResponse response = request("GET", blacklistResource);
-    if (response != null) { // Success
-      return parseList(response.getEntity(String.class), "entry", BlacklistEntry.class);
-    } else { // Failure
-      return new ArrayList<>();
-    }
+    return parseList(response.getEntity(String.class), "entry", BlacklistEntry.class);
   }
 
   /**
    * @return The blacklist entry with the given id. (or null if one doesn't exist)
    */
-  public BlacklistEntry getBlacklistEntry(String blacklistEntryId) {
+  public BlacklistEntry getBlacklistEntry(String blacklistEntryId) 
+      throws MollomRequestException {
     ClientResponse response = request("GET", blacklistResource.path(blacklistEntryId));
-    if (response != null) { // Success
-      return parseBody(response.getEntity(String.class), "entry", BlacklistEntry.class);
-    } else { // Failure
-      return null;
-    }
+    return parseBody(response.getEntity(String.class), "entry", BlacklistEntry.class);
   }
 
   /**
    * Saves a whitelist entry to Mollom.
    * If the whitelist entry already exists, update Mollom with the new properties.
    */
-  public void saveWhitelistEntry(WhitelistEntry whitelistEntry) {
+  public void saveWhitelistEntry(WhitelistEntry whitelistEntry) 
+      throws MollomRequestException {
     if (whitelistEntry.getContext() == Context.ALLFIELDS 
         || whitelistEntry.getContext() == Context.LINKS 
         || whitelistEntry.getContext() == Context.POSTTITLE) {
@@ -395,45 +370,38 @@ public class MollomClient {
       response = request("POST", whitelistResource, postParams);
     }
 
-    if (response != null) { // Success
-      WhitelistEntry returnedWhitelistEntry = parseBody(response.getEntity(String.class), "entry", WhitelistEntry.class);
-      whitelistEntry.setCreated(returnedWhitelistEntry.getCreated());
-      whitelistEntry.setId(returnedWhitelistEntry.getId());
-      whitelistEntry.setLastMatch(returnedWhitelistEntry.getLastMatch());
-      whitelistEntry.setMatchCount(returnedWhitelistEntry.getMatchCount());
-      whitelistEntry.setStatus(returnedWhitelistEntry.isEnabled() ? 1 : 0);
-    }
+    WhitelistEntry returnedWhitelistEntry = parseBody(response.getEntity(String.class), "entry", WhitelistEntry.class);
+    whitelistEntry.setCreated(returnedWhitelistEntry.getCreated());
+    whitelistEntry.setId(returnedWhitelistEntry.getId());
+    whitelistEntry.setLastMatch(returnedWhitelistEntry.getLastMatch());
+    whitelistEntry.setMatchCount(returnedWhitelistEntry.getMatchCount());
+    whitelistEntry.setStatus(returnedWhitelistEntry.isEnabled() ? 1 : 0);
   }
 
   /**
    * Deletes a whitelist entry from Mollom.
    */
-  public void deleteWhitelistEntry(WhitelistEntry whitelistEntry) {
+  public void deleteWhitelistEntry(WhitelistEntry whitelistEntry) 
+      throws MollomRequestException {
     request("POST", whitelistResource.path(whitelistEntry.getId()).path("delete"), new MultivaluedMapImpl());
   }
 
   /**
    * @return A list of all of the whitelist entries (owned by this public key).
    */
-  public List<WhitelistEntry> listWhitelistEntries() {
+  public List<WhitelistEntry> listWhitelistEntries() 
+      throws MollomRequestException {
     ClientResponse response = request("GET", whitelistResource);
-    if (response != null) { // Success
-      return parseList(response.getEntity(String.class), "entry", WhitelistEntry.class);
-    } else { // Failure
-      return new ArrayList<>();
-    }
+    return parseList(response.getEntity(String.class), "entry", WhitelistEntry.class);
   }
 
   /**
    * @return The whitelist entry with the given id. (or null if one doesn't exist)
    */
-  public WhitelistEntry getWhitelistEntry(String whitelistEntryId) {
+  public WhitelistEntry getWhitelistEntry(String whitelistEntryId) 
+      throws MollomRequestException {
     ClientResponse response = request("GET", whitelistResource.path(whitelistEntryId));
-    if (response != null) { // Success
-      return parseBody(response.getEntity(String.class), "entry", WhitelistEntry.class);
-    } else { // Failure
-      return null;
-    }
+    return parseBody(response.getEntity(String.class), "entry", WhitelistEntry.class);
   }
 
   /**
@@ -444,11 +412,13 @@ public class MollomClient {
     client.destroy();
   }
 
-  private ClientResponse request(String method, WebResource resource) {
+  private ClientResponse request(String method, WebResource resource) 
+      throws MollomRequestException {
     return request(method, resource, null);
   }
 
-  private ClientResponse request(String method, WebResource resource, MultivaluedMap<String, String> params) {
+  private ClientResponse request(String method, WebResource resource, MultivaluedMap<String, String> params) 
+      throws MollomRequestException {
     for (int retryAttemptNumber = 0; retryAttemptNumber <= retries; retryAttemptNumber++) {
       try {
         ClientResponse response;
@@ -464,20 +434,14 @@ public class MollomClient {
             .method(method, ClientResponse.class);
         }
         if (response.getStatus() < 200 || response.getStatus() >= 300) {
-          if (debugMode) {
-            throw new MollomRequestException(response.getEntity(String.class));
-          }
-          return null;
+          throw new MollomRequestException(response.getEntity(String.class));
         }
         return response;
       } catch (ClientHandlerException e) {
-        logger.log(Level.SEVERE, "Failed to contact the Mollom server.");
+        logger.log(Level.WARNING, "Failed to contact the Mollom server.", e);
       }
     }
-    if (debugMode) {
-      throw new MollomRequestException("Failed to contact the Mollom server after retries.");
-    }
-    return null;
+    throw new MollomRequestException("Failed to contact the Mollom server after retries.");
   }
   
   /**
@@ -488,8 +452,10 @@ public class MollomClient {
    * </response>
    * 
    * @return JAXB unmarshalled expectedType object from the response.
+   * @throws MollomRequestException 
    */
-  private <T> T parseBody(String xml, String bodyTag, Class<T> expectedType) {
+  private <T> T parseBody(String xml, String bodyTag, Class<T> expectedType) 
+      throws MollomRequestException {
     try {
       // We have to parse the xml into a document first before passing it to JAXB to get the body
       // because the Mollom service returns the object wrapped in a <Response> object
@@ -513,7 +479,8 @@ public class MollomClient {
    * 
    * @return List of JAXB unmarshalled expectedType object from the response.
    */
-  private <T> List<T> parseList(String xml, String bodyTag, Class<T> expectedType) {
+  private <T> List<T> parseList(String xml, String bodyTag, Class<T> expectedType) 
+      throws MollomRequestException {
     try {
       // We have to parse the xml into a document first before passing it to JAXB to get the body
       // because the Mollom service returns the object wrapped in a <Response> object

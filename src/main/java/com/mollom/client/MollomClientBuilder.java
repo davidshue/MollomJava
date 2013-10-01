@@ -25,8 +25,6 @@ public class MollomClientBuilder {
   private static final int DEFAULT_READ_TIMEOUT = 1500;
   private static final String DEFAULT_CLIENT_NAME = "com.mollom.client";
   private static final String DEFAULT_CLIENT_VERSION = "2.0";
-  private static final boolean DEFAULT_ACCEPT_ALL_POSTS_ON_ERROR = false;
-  private static final boolean DEFAULT_DEBUG_MODE = false;
 
   // Client behavior settings
   private boolean testing;
@@ -34,8 +32,6 @@ public class MollomClientBuilder {
   private int retries;
   private int connectionTimeout;
   private int readTimeout;
-  private boolean acceptAllPostsOnError;
-  private boolean debugMode;
 
   // Client information sent to Mollom for debugging / statistics
   private String clientName;
@@ -53,10 +49,8 @@ public class MollomClientBuilder {
     retries = DEFAULT_RETRIES;
     connectionTimeout = DEFAULT_CONNECTION_TIMEOUT;
     readTimeout = DEFAULT_READ_TIMEOUT;
-    acceptAllPostsOnError = DEFAULT_ACCEPT_ALL_POSTS_ON_ERROR;
     clientName = DEFAULT_CLIENT_NAME;
     clientVersion = DEFAULT_CLIENT_VERSION;
-    debugMode = DEFAULT_DEBUG_MODE;
   }
   
   /**
@@ -134,17 +128,6 @@ public class MollomClientBuilder {
   }
 
   /**
-   * Optional property. Default value: false
-   * When enabled, if a connection cannot be made to Mollom (service is down) or an error occurred, all content will be classified as HAM.
-   * Otherwise, if a connection cannot be made to Mollom or an error occurred, all content will be classified as SPAM.
-   * Only works when debug mode is disabled.
-   */
-  public MollomClientBuilder acceptAllPostsOnError(boolean acceptAllPostsOnError) {
-    this.acceptAllPostsOnError = acceptAllPostsOnError;
-    return this;
-  }
-
-  /**
    * Optional property. Default value: com.mollom.client
    * Set the Mollom client name. Change this value if you're using a modified version of the client.
    * 
@@ -201,17 +184,6 @@ public class MollomClientBuilder {
   }
 
   /**
-   * Optional property. Default value: false
-   * 
-   * When enabled, will throw MollomRequestExceptions whenever there is an issue communicating to
-   * the Mollom service, instead of assuming ham or spam, bypassing acceptAllPostsWhenMollomDown.
-   */
-  public MollomClientBuilder withDebuggingEnabled(boolean enabled) {
-    this.debugMode = enabled;
-    return this;
-  }
-
-  /**
    * Builds the MollomClient object as configured.
    * 
    * @throws MollomConfigurationException If could not authenticate with the Mollom service.
@@ -255,8 +227,7 @@ public class MollomClientBuilder {
     WebResource blacklistResource = rootResource.path("blacklist").path(publicKey);
     WebResource whitelistResource = rootResource.path("whitelist").path(publicKey);
     
-    MollomClient mollomClient = new MollomClient(client, contentResource, captchaResource, feedbackResource, blacklistResource, whitelistResource,
-        retries, acceptAllPostsOnError, debugMode);
+    MollomClient mollomClient = new MollomClient(client, contentResource, captchaResource, feedbackResource, blacklistResource, whitelistResource, retries);
     return mollomClient;
   }
 }
