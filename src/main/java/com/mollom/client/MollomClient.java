@@ -84,22 +84,36 @@ public class MollomClient {
   public void checkContent(Content content) 
       throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
     MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
-    postParams.putSingle("postTitle", content.getPostTitle());
-    postParams.putSingle("postBody", content.getPostBody());
-    postParams.putSingle("authorName", content.getAuthorName());
-    postParams.putSingle("authorUrl", content.getAuthorUrl());
-    postParams.putSingle("authorMail", content.getAuthorMail());
-    postParams.putSingle("authorIp", content.getAuthorIp());
-    postParams.putSingle("authorId", content.getAuthorId());
+    if (content.getPostTitle() != null) {
+      postParams.putSingle("postTitle", content.getPostTitle());
+    }
+    if (content.getPostBody() != null) {
+      postParams.putSingle("postBody", content.getPostBody());
+    }
+    if (content.getAuthorName() != null) {
+      postParams.putSingle("authorName", content.getAuthorName());
+    }
+    if (content.getAuthorUrl() != null) {
+      postParams.putSingle("authorUrl", content.getAuthorUrl());
+    }
+    if (content.getAuthorMail() != null) {
+      postParams.putSingle("authorMail", content.getAuthorMail());
+    }
+    if (content.getAuthorIp() != null) {
+      postParams.putSingle("authorIp", content.getAuthorIp());
+    }
+    if (content.getAuthorId() != null) {
+      postParams.putSingle("authorId", content.getAuthorId());
+    }
 
-    // The Mollom service expects Openids as a space-separated list
-    String openIds = "";
     if (content.getAuthorOpenIds() != null) {
+      // The Mollom service expects Openids as a space-separated list
+      String openIds = "";
       for (String authorOpenId : content.getAuthorOpenIds()) {
         openIds += authorOpenId += " ";
       }
+      postParams.putSingle("authorOpenid", openIds);
     }
-    postParams.putSingle("authorOpenid", openIds);
 
     // The Mollom service expects checks as a multi-param
     if (content.getChecks() != null) {
@@ -110,14 +124,22 @@ public class MollomClient {
       postParams.put("checks", checks);
     }
 
-    postParams.putSingle("unsure", content.getPostTitle());
+    postParams.putSingle("unsure", content.isAllowUnsure() ? "1" : "0");
     postParams.putSingle("strictness", content.getStrictness().toString());
     postParams.putSingle("rateLimit", Integer.toString(content.getRateLimit()));
-    postParams.putSingle("honeypot", content.getHoneypot());
+    if (content.getHoneypot() != null) {
+      postParams.putSingle("honeypot", content.getHoneypot());
+    }
     postParams.putSingle("stored", content.isStored() ? "1" : "0");
-    postParams.putSingle("url", content.getUrl());
-    postParams.putSingle("contextUrl", content.getContextUrl());
-    postParams.putSingle("contextTitle", content.getContextTitle());
+    if (content.getUrl() != null) {
+      postParams.putSingle("url", content.getUrl());
+    }
+    if (content.getContextUrl() != null) {
+      postParams.putSingle("contextUrl", content.getContextUrl());
+    }
+    if (content.getContextTitle() != null) {
+      postParams.putSingle("contextTitle", content.getContextTitle());
+    }
 
     // If the user passes in a brand new Content object, map to the Create Content API
     // If the user passes in a previously checked Content object, map to the Update (and re-check) Content API
@@ -191,9 +213,16 @@ public class MollomClient {
   public void checkCaptcha(Captcha captcha) 
       throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
     MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
+    if (captcha.getSolution() == null) {
+      throw new MollomIllegalUsageException("Cannot check a CAPTCHA without a solution.");
+    }
     postParams.putSingle("solution", captcha.getSolution());
-    postParams.putSingle("authorIp", captcha.getAuthorIp());
-    postParams.putSingle("authorId", captcha.getAuthorId());
+    if (captcha.getAuthorIp() != null) {
+      postParams.putSingle("authorIp", captcha.getAuthorIp());
+    }
+    if (captcha.getAuthorId() != null) {
+      postParams.putSingle("authorId", captcha.getAuthorId());
+    }
 
     ClientResponse response = request("POST", captchaResource.path(captcha.getId()), postParams);
     Captcha returnedCaptcha = parseBody(response.getEntity(String.class), "captcha", Captcha.class);
@@ -279,12 +308,17 @@ public class MollomClient {
   public void saveBlacklistEntry(BlacklistEntry blacklistEntry) 
       throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
     MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
+    if (blacklistEntry.getValue() == null) {
+      throw new MollomIllegalUsageException("Blacklist entries must have a value in order to be saved.");
+    }
     postParams.putSingle("value", blacklistEntry.getValue());
     postParams.putSingle("reason", blacklistEntry.getReason().toString());
     postParams.putSingle("context", blacklistEntry.getContext().toString());
     postParams.putSingle("match", blacklistEntry.getMatch().toString());
     postParams.putSingle("status", blacklistEntry.isEnabled() ? "1" : "0");
-    postParams.putSingle("note", blacklistEntry.getNote());
+    if (blacklistEntry.getNote() != null) {
+      postParams.putSingle("note", blacklistEntry.getNote());
+    }
     
     ClientResponse response;
     if (blacklistEntry.getId() != null) { // Update existing entry
@@ -340,10 +374,15 @@ public class MollomClient {
     }
 
     MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
+    if (whitelistEntry.getValue() == null) {
+      throw new MollomIllegalUsageException("Whitelist entries must have a value to be saved.");
+    }
     postParams.putSingle("value", whitelistEntry.getValue());
     postParams.putSingle("context", whitelistEntry.getContext().toString());
     postParams.putSingle("status", whitelistEntry.isEnabled() ? "1" : "0");
-    postParams.putSingle("note", whitelistEntry.getNote());
+    if (whitelistEntry.getNote() != null) {
+      postParams.putSingle("note", whitelistEntry.getNote());
+    }
 
     ClientResponse response;
     if (whitelistEntry.getId() != null) { // Update existing entry
