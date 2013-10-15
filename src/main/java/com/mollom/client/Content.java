@@ -42,7 +42,6 @@ public class Content {
   private Check[] checks;
   private boolean allowUnsure;
   private Strictness strictness;
-  private int rateLimit;
 
   // Mollom content moderation platform specific fields managed by the library
   private boolean stored;
@@ -58,7 +57,6 @@ public class Content {
     allowUnsure = true;
     strictness = Strictness.NORMAL;
     checks = new Check[] { Check.SPAM };
-    rateLimit = 15;
     stored = false;
     spamScore = -1;
     profanityScore = -1;
@@ -301,14 +299,6 @@ public class Content {
     this.strictness = strictness;
   }
 
-  /**
-   * Seconds that must have passed by for the same author to post again.
-   * Defaults to 15 seconds.
-   */
-  public void setRateLimit(int rateLimit) {
-    this.rateLimit = rateLimit;
-  }
-
   String getSpamClassification() {
     return spamClassification;
   }
@@ -327,10 +317,6 @@ public class Content {
 
   Strictness getStrictness() {
     return strictness;
-  }
-
-  int getRateLimit() {
-    return rateLimit;
   }
 
   boolean isStored() {

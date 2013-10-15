@@ -126,7 +126,6 @@ public class MollomClient {
 
     postParams.putSingle("unsure", content.isAllowUnsure() ? "1" : "0");
     postParams.putSingle("strictness", content.getStrictness().toString());
-    postParams.putSingle("rateLimit", Integer.toString(content.getRateLimit()));
     if (content.getHoneypot() != null) {
       postParams.putSingle("honeypot", content.getHoneypot());
     }
