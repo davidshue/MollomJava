@@ -15,8 +15,6 @@ public class BlacklistEntry {
   private String id;
   private int created;
   private int status;
-  private int lastMatch;
-  private long matchCount;
   private String value;
   private String reason;
   private String context;
@@ -42,20 +40,6 @@ public class BlacklistEntry {
    */
   public int getCreated() {
     return created;
-  }
-
-  /**
-   * @return Unix timestamp (seconds) of when the last time this blacklist entry matched.
-   */
-  public int getLastMatch() {
-    return lastMatch;
-  }
-
-  /**
-   * @return Number of times this blacklist entry has matched content
-   */
-  public long getMatchCount() {
-    return matchCount;
   }
 
   /**
@@ -103,14 +87,6 @@ public class BlacklistEntry {
 
   void setStatus(int status) {
     this.status = status;
-  }
-
-  void setLastMatch(int lastMatch) {
-    this.lastMatch = lastMatch;
-  }
-
-  void setMatchCount(long matchCount) {
-    this.matchCount = matchCount;
   }
 
   /**

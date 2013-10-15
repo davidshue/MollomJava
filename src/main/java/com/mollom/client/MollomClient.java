@@ -330,8 +330,6 @@ public class MollomClient {
     BlacklistEntry returnedBlacklistEntry = parseBody(response.getEntity(String.class), "entry", BlacklistEntry.class);
     blacklistEntry.setCreated(returnedBlacklistEntry.getCreated());
     blacklistEntry.setId(returnedBlacklistEntry.getId());
-    blacklistEntry.setLastMatch(returnedBlacklistEntry.getLastMatch());
-    blacklistEntry.setMatchCount(returnedBlacklistEntry.getMatchCount());
     blacklistEntry.setStatus(returnedBlacklistEntry.isEnabled() ? 1 : 0);
   }
 
