@@ -37,16 +37,24 @@ if (content.isHam()) {
 } else if(content.isUnsure()) {
     // Present captcha to the user for this content because Mollom was unsure
     Captcha captcha = client.createCaptcha(CaptchaType.IMAGE, false, content);
-    String solution; // Present captcha.getUrl() to the user to get solution
-    captcha.setSolution(solution);
     catpcha.setAuthorIp("192.168.1.1");
-    client.checkCaptcha(captcha);
     
-    if (captcha.isSolved()) {
-        // Accept content
-    } else {
-        // Reject content
+    int captchaRetries = 3;
+    String solution;
+    
+    for (int i = 0; i < captchaRetries; i++) {
+        // Present the image from captcha.getUrl() to the user to get solution
+        solution = getUserSolution(captcha.getUrl());
+        captcha.setSolution(solution);
+        client.checkCaptcha(captcha);
+        
+        if (captcha.isSolved()) {
+            // Accept content
+            return;
+        }
     }
+    
+    // Reject content
 } else {
     // Reject content
 }
