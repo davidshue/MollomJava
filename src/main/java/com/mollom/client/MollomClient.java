@@ -223,6 +223,24 @@ public class MollomClient {
     if (captcha.getAuthorId() != null) {
       postParams.putSingle("authorId", captcha.getAuthorId());
     }
+    if (captcha.getAuthorMail() != null) {
+      postParams.putSingle("authorMail", captcha.getAuthorMail());
+    }
+    if (captcha.getAuthorName() != null) {
+      postParams.putSingle("authorName", captcha.getAuthorName());
+    }
+    if (captcha.getAuthorUrl() != null) {
+      postParams.putSingle("authorUrl", captcha.getAuthorUrl());
+    }
+    if (captcha.getAuthorOpenIds() != null) {
+      // The Mollom service expects Openids as a space-separated list
+      String openIds = "";
+      for (String authorOpenId : captcha.getAuthorOpenIds()) {
+        openIds += authorOpenId += " ";
+      }
+      postParams.putSingle("authorOpenid", openIds);
+    }
+    postParams.putSingle("rateLimit", Integer.toString(captcha.getRateLimit()));
 
     ClientResponse response = request("POST", captchaResource.path(captcha.getId()), postParams);
     Captcha returnedCaptcha = parseBody(response.getEntity(String.class), "captcha", Captcha.class);

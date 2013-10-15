@@ -16,8 +16,15 @@ public class Captcha {
 
   // Fields injected by the user for verification
   private String solution;
+  private String authorName;
+  private String authorUrl;
+  private String authorMail;
   private String authorIp;
   private String authorId;
+  private String[] authorOpenIds;
+  private String honeypot;
+
+  private int rateLimit;
 
   // Fields injected by Mollom upon captcha verification
   private int solved;
@@ -25,6 +32,7 @@ public class Captcha {
 
   public Captcha() {
     solved = -1;
+    rateLimit = 0;
   }
 
   public String getId() {
@@ -45,6 +53,30 @@ public class Captcha {
 
   String getAuthorId() {
     return authorId;
+  }
+
+  String getAuthorName() {
+    return authorName;
+  }
+
+  String getAuthorUrl() {
+    return authorUrl;
+  }
+
+  String getAuthorMail() {
+    return authorMail;
+  }
+
+  String[] getAuthorOpenIds() {
+    return authorOpenIds;
+  }
+
+  String getHoneypot() {
+    return honeypot;
+  }
+
+  int getRateLimit() {
+    return rateLimit;
   }
 
   public String getReason() {
@@ -81,5 +113,33 @@ public class Captcha {
     }
 
     return solved == 1;
+  }
+
+  public void setAuthorName(String authorName) {
+    this.authorName = authorName;
+  }
+
+  public void setAuthorUrl(String authorUrl) {
+    this.authorUrl = authorUrl;
+  }
+
+  public void setAuthorMail(String authorMail) {
+    this.authorMail = authorMail;
+  }
+
+  public void setAuthorOpenIds(String[] authorOpenIds) {
+    this.authorOpenIds = authorOpenIds;
+  }
+
+  public void setHoneypot(String honeypot) {
+    this.honeypot = honeypot;
+  }
+
+  /**
+   * Seconds that must have passed by for the same author to post again.
+   * Defaults to 0 seconds.
+   */
+  public void setRateLimit(int rateLimit) {
+    this.rateLimit = rateLimit;
   }
 }
