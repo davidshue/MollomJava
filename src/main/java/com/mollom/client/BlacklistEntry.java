@@ -5,15 +5,17 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
 
 /**
- * Mollom automatically blocks unwanted content and learns from all participating sites to improve its filters.
- * On top of automatic filtering, you can define a custom blacklist.
- * Upon matching a blacklist item, content is blocked.
+ * Defines the blacklist entry entity.
+ *
+ * @see http://mollom.com/api#blacklist
  */
 @XmlRootElement(name = "entry")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class BlacklistEntry {
+
   private String id;
   private int created;
+
   private int status;
   private String value;
   private String reason;
@@ -36,10 +38,14 @@ public class BlacklistEntry {
   }
 
   /**
-   * @return Unix timestamp (seconds) of when the blacklist entry was created.
+   * @return Unix timestamp (seconds) of when the entry was created.
    */
   public int getCreated() {
     return created;
+  }
+
+  public boolean isEnabled() {
+    return status == 1;
   }
 
   /**
@@ -89,6 +95,14 @@ public class BlacklistEntry {
     this.status = status;
   }
 
+  public void disable() {
+    status = 0;
+  }
+
+  public void enable() {
+    status = 1;
+  }
+
   /**
    * @param value The string/value to blacklist.
    */
@@ -104,7 +118,7 @@ public class BlacklistEntry {
   }
 
   /**
-   * @oaram context Where the entry's value may match.
+   * @param context Where the entry's value may match.
    */
   public void setContext(Context context) {
     this.context = context.toString();
@@ -122,17 +136,5 @@ public class BlacklistEntry {
    */
   public void setNote(String note) {
     this.note = note;
-  }
-
-  public boolean isEnabled() {
-    return status == 1;
-  }
-
-  public void disable() {
-    status = 0;
-  }
-
-  public void enable() {
-    status = 1;
   }
 }

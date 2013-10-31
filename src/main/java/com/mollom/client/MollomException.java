@@ -1,8 +1,7 @@
 package com.mollom.client;
 
 /**
- * Problem with the request to the Mollom server.
- * Generic superclass for more specific exceptions.
+ * Base exception thrown in any Mollom API request/response failure event.
  */
 public class MollomException extends Exception {
   public MollomException(String message) {

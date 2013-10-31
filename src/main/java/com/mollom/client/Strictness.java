@@ -1,13 +1,24 @@
 package com.mollom.client;
 
 /**
- * Denotes the strictness of Mollom spaminess checks.
- * - STRICT: more likely to classify content as spam
- * - NORMAL: normal behavior (default)
- * - RELAXED: more likely to classify content as ham
+ * Denotes the strictness of a SPAM check.
  */
 public enum Strictness {
-  STRICT, NORMAL, RELAXED;
+
+  /**
+   * Content is more likely classified as spam.
+   */
+  STRICT,
+
+  /**
+   * Default behavior.
+   */
+  NORMAL,
+
+  /**
+   * Content is more likely classified as ham.
+   */
+  RELAXED;
 
   @Override
   public String toString() {

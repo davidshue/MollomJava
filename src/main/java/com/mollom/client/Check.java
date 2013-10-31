@@ -1,27 +1,35 @@
 package com.mollom.client;
 
 /**
- * The possible checks that can be executed on a piece of text.
+ * Checks that can be executed on a piece of content.
  */
 public enum Check {
+
   /**
-   * Check the text for spamminess (default)
-   * Will allow for isSpam()/isHam()/isUnsure() and getSpamScore()
+   * Check the text for spam (default).
+   *
+   * Enables isHam(), isSpam(), isUnsure(), and getSpamScore().
    */
   SPAM,
+
   /**
-   * Check the text for foul language
-   * Will allow for getProfanityScore()
+   * Check the text for profanity.
+   *
+   * Enables getProfanityScore().
    */
   PROFANITY,
+
   /**
-   * Estimate the quality of the text
-   * Will allow for getQualityScore()
+   * Determine the quality of the text.
+   *
+   * Enables getQualityScore().
    */
   QUALITY,
+
   /**
-   * Determine the most likely language(s) for the text
-   * Will allow for getLanguages()
+   * Determine the languages of the text.
+   *
+   * Enables getLanguages().
    */
   LANGUAGE;
 

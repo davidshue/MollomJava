@@ -1,10 +1,19 @@
 package com.mollom.client;
 
 /**
- * How precise a Blacklist entry may match.
+ * How precise a blacklist entry matches.
  */
 public enum BlacklistMatchPrecision {
-  EXACT, CONTAINS;
+
+  /**
+   * Matches any string contained within any other string.
+   */
+  CONTAINS,
+
+  /**
+   * Requires term to be enclosed by word boundaries.
+   */
+  EXACT;
 
   @Override
   public String toString() {

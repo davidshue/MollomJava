@@ -1,8 +1,7 @@
 package com.mollom.client;
 
 /**
- * Problem with the request to the Mollom service.
- * The server returned a 4xx status.
+ * Thrown upon a faulty request sent by the client (4xx response code).
  */
 public class MollomBadRequestException extends MollomException {
   public MollomBadRequestException(String message) {

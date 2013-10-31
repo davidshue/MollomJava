@@ -1,24 +1,27 @@
 package com.mollom.client;
 
 /**
- * The reason for why the value is blacklisted.
+ * Why a post with positive match is blacklisted.
  */
 public enum BlacklistReason {
+
   /**
-   * Report that the content is spammy
+   * Spam, unsolicited advertising.
    */
   SPAM,
+
   /**
-   * Report that the content is profane.
+   * Profane, obscene, violent.
    */
   PROFANITY,
+
   /**
-   * Report that the content is low quality.
+   * Low-quality.
    */
   QUALITY,
+
   /**
-   * Report that the content is unwanted on the site,
-   * but not spam, profane or low quality.
+   * Unwanted, taunting, off-topic.
    */
   UNWANTED;
 

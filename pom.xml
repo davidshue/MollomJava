@@ -7,8 +7,8 @@
   <version>2.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
-  <name>Mollom Rest Client</name>
-  <url>http://mollom.com/api</url>
+  <name>Mollom REST Client</name>
+  <url>https://github.com/Mollom/MollomJava</url>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

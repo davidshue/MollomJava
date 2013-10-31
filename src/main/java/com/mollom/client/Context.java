@@ -1,30 +1,23 @@
 package com.mollom.client;
 
-
 /**
- * Where a Blacklist or Whitelist entry may match.
+ * In which fields a Blacklist or Whitelist entry may match.
  */
 public enum Context {
-  /**
-   * Not available for whitelist
-   * Default for blacklist
-   */
+  // Blacklist only; default.
   ALLFIELDS("allFields"),
+
+  AUTHOR("author"),
+  AUTHORIP("authorIp"),
+  // Default for whitelist.
+  AUTHORID("authorId"),
   AUTHORNAME("authorName"),
   AUTHORMAIL("authorMail"),
-  AUTHORIP("authorIp"),
-  /**
-   * Default for whitelist
-   */
-  AUTHORID("authorId"),
-  /**
-   * Not available for whitelist
-   */
-  LINKS("links"),
-  /**
-   * Not available for whitelist
-   */
-  POSTTITLE("postTitle");
+
+  // Blacklist only.
+  POST("post"),
+  POSTTITLE("postTitle"),
+  LINKS("links");
 
   private final String name;
 

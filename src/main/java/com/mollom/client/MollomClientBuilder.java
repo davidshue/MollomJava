@@ -13,31 +13,36 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 
 /**
+ * Builds a new mollomClient instance to interact with the Mollom service.
+ *
  * The initial entry point for the Mollom API library.
- * Used to build a MollomClient to interact with the Mollom services.
  */
 public class MollomClientBuilder {
+
   private static final String PRODUCTION_ENDPOINT = "http://rest.mollom.com/";
   private static final String TESTING_ENDPOINT = "http://dev.mollom.com/";
+
   private static final String DEFAULT_API_VERSION = "v1";
   private static final int DEFAULT_RETRIES = 1;
   private static final int DEFAULT_CONNECTION_TIMEOUT = 1500;
   private static final int DEFAULT_READ_TIMEOUT = 1500;
-  private static final String DEFAULT_CLIENT_NAME = "com.mollom.client";
-  private static final String DEFAULT_CLIENT_VERSION = "2.0";
 
-  // Client behavior settings
+  private static final String DEFAULT_CLIENT_NAME = "MollomJava";
+  private static final String DEFAULT_CLIENT_VERSION = "2.0-dev";
+
+  // Client behavior settings.
   private boolean testing;
+
   private String apiVersion;
   private int retries;
   private int connectionTimeout;
   private int readTimeout;
 
-  // Client information sent to Mollom for debugging / statistics
-  private String clientName;
-  private String clientVersion;
+  // Client information sent to Mollom for support and statistics.
   private String platformName;
   private String platformVersion;
+  private String clientName;
+  private String clientVersion;
 
   public static MollomClientBuilder create() {
     return new MollomClientBuilder();
@@ -52,27 +57,31 @@ public class MollomClientBuilder {
     clientName = DEFAULT_CLIENT_NAME;
     clientVersion = DEFAULT_CLIENT_VERSION;
   }
-  
+
   /**
-   * Optional property. Default value: false
-   * Enable the use of the dev.mollom.com endpoint to test your REST API client implementation.
-   * 
+   * Enables usage of the dev.mollom.com endpoint to test your integration.
+   *
+   * Optional. Default value: false
+   *
    * Testing mode differences:
-   * checkContent only reacts to literal strings "spam", "ham" and "unsure" in the postTitle and postBody parameters
-   * if none of the literal strings is contained, and also no blacklist or whitelist values matched,
-   * the final spamClassification will be "unsure"
-   * checkCaptcha accepts "correct" for image captchas and "demo" for audio captchas as the correct solution
-   * the captchaId must be a valid captchaId returned from a getCaptcha request
+   * - checkContent() only reacts to the literal strings "spam", "ham", and
+   *   "unsure" in the postTitle and postBody parameters.
+   * - If none of the literal strings is contained, and no blacklist/whitelist
+   *   entries matched, the final spamClassification will be "unsure".
+   * - checkCaptcha() only accepts "correct" for image CAPTCHAs and "demo" for
+   *   audio CAPTCHAs as the correct solution.
    */
   public MollomClientBuilder withTesting(boolean testing) {
     this.testing = testing;
     return this;
   }
-  
+
   /**
-   * Optional property. Default value: v1
-   * Set the version of the Mollom API to use.
-   * We only support one API version at the moment, but added for the sake of completeness
+   * Sets the version of the Mollom API to use.
+   *
+   * Optional. Default value: v1
+   *
+   * There is only one API version at this point, but included for completeness.
    */
   public MollomClientBuilder withApiVersion(String apiVersion) {
     // TODO: Add additional checks when we support multiple API versions
@@ -85,8 +94,9 @@ public class MollomClientBuilder {
   }
 
   /**
-   * Optional property. Default value: 1
-   * Set the maximum number of times the client will retry a request to the Mollom service.
+   * Sets the maximum number of times a Mollom API request will be retried.
+   *
+   * Optional. Default value: 1
    */
   public MollomClientBuilder withRetries(int retries) {
     if (retries < 0) {
@@ -98,10 +108,11 @@ public class MollomClientBuilder {
   }
 
   /**
-   * Optional property. Default value: 1500 (ms)
-   * Set the timeout in making the initial connection to the Mollom service.
-   * 
-   * Setting this value to 0 results in an infinite timeout.
+   * Sets the timeout (ms) for establishing a connection to the Mollom API.
+   *
+   * Optional. Default value: 1500 (ms)
+   *
+   * A value of 0 means no timeout (infinite).
    */
   public MollomClientBuilder withConnectionTimeout(int connectionTimeout) {
     if (connectionTimeout < 0) {
@@ -113,10 +124,11 @@ public class MollomClientBuilder {
   }
 
   /**
-   * Optional property. Default value: 1500 (ms)
-   * Set the timeout on waiting to read data from the Mollom service.
-   * 
-   * Setting this value to 0 results in an infinite timeout.
+   * Sets the timeout (ms) for waiting for and reading a Mollom API response.
+   *
+   * Optional. Default value: 1500 (ms)
+   *
+   * A value of 0 means no timeout (infinite).
    */
   public MollomClientBuilder withReadTimeout(int readTimeout) {
     if (readTimeout < 0) {
@@ -128,13 +140,16 @@ public class MollomClientBuilder {
   }
 
   /**
-   * Optional property. Default value: com.mollom.client
-   * Set the Mollom client name. Change this value if you're using a modified version of the client.
-   * 
-   * This information is used to speed up support requests and technical
-   * inquiries. The data may also be aggregated to help the Mollom staff to make
-   * decisions on new features or the necessity of back-porting improved
-   * functionality to older versions.
+   * Sets the Mollom client name.
+   *
+   * Optional. Default value: MollomJava
+   *
+   * Change this value if you are using a modified version of this client library.
+   *
+   * Used to speed up support requests and technical inquiries. The data may
+   * also be aggregated to help the Mollom staff to make decisions on new
+   * features or the necessity of back-porting improved functionality to older
+   * versions.
    */
   public MollomClientBuilder withClientName(String clientName) {
     this.clientName = clientName;
@@ -142,13 +157,16 @@ public class MollomClientBuilder {
   }
 
   /**
-   * Optional property. Default value: 2.0
-   * Set the Mollom client version. Change this value if you're using a modified version of the client.
-   * 
-   * This information is used to speed up support requests and technical
-   * inquiries. The data may also be aggregated to help the Mollom staff to make
-   * decisions on new features or the necessity of back-porting improved
-   * functionality to older versions.
+   * Sets the Mollom client version.
+   *
+   * Optional. Default value: {current library version}
+   *
+   * Change this value if you are using a modified version of this client library.
+   *
+   * Used to speed up support requests and technical inquiries. The data may
+   * also be aggregated to help the Mollom staff to make decisions on new
+   * features or the necessity of back-porting improved functionality to older
+   * versions.
    */
   public MollomClientBuilder withClientVersion(String clientVersion) {
     this.clientVersion = clientVersion;
@@ -156,13 +174,22 @@ public class MollomClientBuilder {
   }
 
   /**
-   * Optional property. Default value: n/a
-   * Set the platform/framework name; e.g. Spring.
-   * 
-   * This information is used to speed up support requests and technical
-   * inquiries. The data may also be aggregated to help the Mollom staff to make
-   * decisions on new features or the necessity of back-porting improved
-   * functionality to older versions.
+   * Sets the platform/framework/CMS name.
+   *
+   * Optional. Default value: n/a
+   *
+   * Only specify a publicly available web application framework here.
+   * For example:
+   * - Spring
+   * - DaliCore
+   *
+   * If you are not using a public web application framework or CMS project,
+   * leave this property empty.
+   *
+   * Used to speed up support requests and technical inquiries. The data may
+   * also be aggregated to help the Mollom staff to make decisions on new
+   * features or the necessity of back-porting improved functionality to older
+   * versions.
    */
   public MollomClientBuilder withPlatformName(String platformName) {
     this.platformName = platformName;
@@ -170,13 +197,16 @@ public class MollomClientBuilder {
   }
 
   /**
-   * Optional property. Default value: n/a
-   * Set the platform/framework version; e.g. 3.1
-   * 
-   * This information is used to speed up support requests and technical
-   * inquiries. The data may also be aggregated to help the Mollom staff to make
-   * decisions on new features or the necessity of back-porting improved
-   * functionality to older versions.
+   * Sets the platform/framework version.
+   *
+   * Optional. Default value: n/a
+   *
+   * Specify the version of the platform/framework; e.g., 3.1.0
+   *
+   * Used to speed up support requests and technical inquiries. The data may
+   * also be aggregated to help the Mollom staff to make decisions on new
+   * features or the necessity of back-porting improved functionality to older
+   * versions.
    */
   public MollomClientBuilder withPlatformVersion(String platformVersion) {
     this.platformVersion = platformVersion;
@@ -185,7 +215,7 @@ public class MollomClientBuilder {
 
   /**
    * Builds the MollomClient object as configured.
-   * 
+   *
    * @throws MollomConfigurationException If could not authenticate with the Mollom service.
    */
   public MollomClient build(String publicKey, String privateKey) {
@@ -193,19 +223,25 @@ public class MollomClientBuilder {
     client.setConnectTimeout(connectionTimeout);
     client.setReadTimeout(readTimeout);
 
-    OAuthParameters oauthParams = new OAuthParameters().signatureMethod("HMAC-SHA1").consumerKey(publicKey).version("1.0");
-    OAuthSecrets oauthSecrets = new OAuthSecrets().consumerSecret(privateKey);
+    OAuthParameters oauthParams = new OAuthParameters()
+      .signatureMethod("HMAC-SHA1")
+      .consumerKey(publicKey)
+      .version("1.0");
+    OAuthSecrets oauthSecrets = new OAuthSecrets()
+      .consumerSecret(privateKey);
     ClientFilter oauthFilter = new OAuthClientFilter(client.getProviders(), oauthParams, oauthSecrets);
     client.addFilter(oauthFilter);
 
     String rootUrl = testing ? TESTING_ENDPOINT : PRODUCTION_ENDPOINT;
-    WebResource rootResource = client.resource(rootUrl).path(apiVersion);
+    WebResource rootResource = client
+      .resource(rootUrl)
+      .path(apiVersion);
 
-    // Verify the public private keys
-    if(publicKey == null) {
+    // Verify that API keys exist.
+    if (publicKey == null || publicKey.equals("")) {
       throw new MollomConfigurationException("The property `publicKey` must be configured.");
     }
-    if(privateKey == null) {
+    if (privateKey == null || privateKey.equals("")) {
       throw new MollomConfigurationException("The property `privateKey` must be configured.");
     }
     MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
@@ -213,20 +249,22 @@ public class MollomClientBuilder {
     postParams.putSingle("platformVersion", platformVersion);
     postParams.putSingle("clientName", clientName);
     postParams.putSingle("clientVersion", clientVersion);
-    ClientResponse response = rootResource.path("site").path(publicKey)
+    ClientResponse response = rootResource
+      .path("site")
+      .path(publicKey)
       .accept(MediaType.APPLICATION_XML).type(MediaType.APPLICATION_FORM_URLENCODED)
       .post(ClientResponse.class, postParams);
     if (response.getStatus() != 200) {
       throw new MollomConfigurationException("Invalid public/private key.");
     }
 
-    // Initialize the resources
+    // Initialize the resources.
     WebResource contentResource = rootResource.path("content");
     WebResource captchaResource = rootResource.path("captcha");
     WebResource feedbackResource = rootResource.path("feedback");
     WebResource blacklistResource = rootResource.path("blacklist").path(publicKey);
     WebResource whitelistResource = rootResource.path("whitelist").path(publicKey);
-    
+
     MollomClient mollomClient = new MollomClient(client, contentResource, captchaResource, feedbackResource, blacklistResource, whitelistResource, retries);
     return mollomClient;
   }

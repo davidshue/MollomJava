@@ -7,7 +7,11 @@ import javax.xml.bind.annotation.XmlElementWrapper;
 import javax.xml.bind.annotation.XmlRootElement;
 
 /**
- * A single piece of Content to send to Mollom for classification.
+ * Defines the content entity.
+ *
+ * Each entity typically represents a POST request of a user.
+ *
+ * @see http://mollom.com/api#content
  */
 @XmlRootElement(name = "content")
 @XmlAccessorType(XmlAccessType.FIELD)
@@ -16,42 +20,55 @@ public class Content {
    * Content ID is a unique identifier to Mollom.
    */
   private String id;
-  
-  // Fields injected by Mollom
+
+  /**
+   * Fields injected by Mollom.
+   */
   private double spamScore;
   private String spamClassification;
   private double profanityScore;
   private double qualityScore;
-  private String reason;
+
   @XmlElementWrapper(name = "languages")
   @XmlElement(name = "language")
   private Language[] languages;
-  
-  // Fields used for classification; set by the user
-  private String postTitle;
-  private String postBody;
-  private String authorName;
-  private String authorUrl;
-  private String authorMail;
+
+  private String reason;
+
+  /**
+   * Fields used for classification; set by the client.
+   */
   private String authorIp;
   private String authorId;
   private String[] authorOpenIds;
+  private String authorName;
+  private String authorMail;
+  private String authorUrl;
   private String honeypot;
-  
-  // Fields used to configure how Mollom behaves
+
+  private String postTitle;
+  private String postBody;
+  // Absolute URL to the parent/context page of the checked content.
+  private String contextUrl;
+  // The title of the parent/context page of the checked content.
+  private String contextTitle;
+
+  /**
+   * Fields used to control Mollom's behavior.
+   */
   private Check[] checks;
   private boolean allowUnsure;
   private Strictness strictness;
 
-  // Mollom content moderation platform specific fields managed by the library
-  private boolean stored;
-  private String url; // Absolute URL to the stored content
-  private String contextUrl; // Absolute URL to parent/context content of the stored content
-  private String contextTitle; // The title of the parent/context content of the stored content
-  
   /**
-   * Constructor used to create a new Content to be checked by Mollom.
-   * Configures all of the default properties.
+   * Fields to inform Mollom about locally stored content.
+   */
+  private boolean stored;
+  // Absolute URL to the stored content.
+  private String url;
+
+  /**
+   * Constucts a new Content to be checked by Mollom.
    */
   public Content() {
     allowUnsure = true;
@@ -62,7 +79,7 @@ public class Content {
     profanityScore = -1;
     qualityScore = -1;
   }
-  
+
   /**
    * @return Unique content ID assigned by Mollom.
    */
@@ -70,16 +87,66 @@ public class Content {
     return id;
   }
 
+  public String getAuthorIp() {
+    return authorIp;
+  }
+
+  public String getAuthorId() {
+    return authorId;
+  }
+
+  public String[] getAuthorOpenIds() {
+    return authorOpenIds;
+  }
+
+  public String getAuthorName() {
+    return authorName;
+  }
+
+  public String getAuthorMail() {
+    return authorMail;
+  }
+
+  public String getAuthorUrl() {
+    return authorUrl;
+  }
+
+  public String getHoneypot() {
+    return honeypot;
+  }
+
+  public String getPostTitle() {
+    return postTitle;
+  }
+
+  public String getPostBody() {
+    return postBody;
+  }
+
+  public String getContextUrl() {
+    return contextUrl;
+  }
+
+  public String getContextTitle() {
+    return contextTitle;
+  }
+
+  public Check[] getChecks() {
+    return checks;
+  }
+
   /**
-   * Values are floating point values with a precision of 2, ranging between 0.00 and 1.00.
-   * 0.0 means ham
-   * 1.0 means spam
-   * 0.5 means unsure
-   * Depending on the Mollom subscription plan, the returned scores can be real values between 0 and 1.
-   * 
-   * @return The determined spaminess of the content.
+   * @return The determined spam score of the content.
+   *   Values are floating point values with a precision of 2, ranging between
+   *   0.00 and 1.00:
+   *   - 0.0 means ham
+   *   - 0.5 means unsure
+   *   - 1.0 means spam
+   *   Depending on the Mollom subscription plan, the returned scores can be
+   *   real values between 0 and 1.
+   *
    * @throws MollomException
-   *           If a QUALITY check was not performed beforehand.
+   *   If a SPAM check was not performed beforehand.
    */
   public double getSpamScore() {
     if (spamScore == -1) {
@@ -88,15 +155,21 @@ public class Content {
     return spamScore;
   }
 
+  public String getSpamClassification() {
+    return spamClassification;
+  }
+
   /**
-   * Values are floating point values with a precision of 2, ranging between 0.00 and 1.00.
-   * 0.0 means not profane
-   * 1.0 means profane
-   * Depending on the Mollom subscription plan, the returned scores can be real values between 0 and 1.
-   * 
-   * @return The determined profanity of the content.
+   * @return The determined profanity score of the content.
+   *   Values are floating point values with a precision of 2, ranging between
+   *   0.00 and 1.00:
+   *   - 0.0 means not profane
+   *   - 1.0 means profane
+   *   Depending on the Mollom subscription plan, the returned scores can be
+   *   real values between 0 and 1.
+   *
    * @throws MollomException
-   *           If a PROFANITY check was not performed beforehand.
+   *   If a PROFANITY check was not performed beforehand.
    */
   public double getProfanityScore() {
     if (profanityScore == -1) {
@@ -106,21 +179,34 @@ public class Content {
   }
 
   /**
-   * Values are floating point values with a precision of 2, ranging between 0.00 and 1.00.
-   * 0.0 means low quality content
-   * 1.0 means high quality content
-   * Only accessible if the content was checked with the QUALITY check.
-   * Depending on the Mollom subscription plan, the returned scores can be real values between 0 and 1.
-   * 
    * @return The determined quality of the content.
+   *   Values are floating point values with a precision of 2, ranging between
+   *   0.00 and 1.00:
+   *   - 0.0 means low quality content
+   *   - 1.0 means high quality content
+   *   Depending on the Mollom subscription plan, the returned scores can be
+   *   real values between 0 and 1.
+   *
    * @throws MollomException
-   *           If a QUALITY check was not performed beforehand.
+   *   If a QUALITY check was not performed beforehand.
    */
   public double getQualityScore() {
     if (qualityScore == -1) {
       throw new MollomIllegalUsageException("Quality score cannot be determined without doing a QUALITY check first.");
     }
     return qualityScore;
+  }
+
+  /**
+   * @return Detected languages for the content.
+   * @throws MollomException
+   *   If a LANGUAGE check was not performed beforehand.
+   */
+  public Language[] getLanguages() {
+    if (languages == null) {
+      throw new MollomIllegalUsageException("Language cannot be determined without doing a LANGUAGES check first.");
+    }
+    return languages;
   }
 
   /**
@@ -131,57 +217,13 @@ public class Content {
   }
 
   /**
-   * @return Detected language(s) for the content.
-   * @throws MollomException
-   *           If a LANGUAGE check was not performed beforehand.
-   */
-  public Language[] getLanguages() {
-    if (languages == null) {
-      throw new MollomIllegalUsageException("Language cannot be determined without doing a LANGUAGES check first.");
-    }
-    return languages;
-  }
-
-  String getPostTitle() {
-    return postTitle;
-  }
-
-  String getPostBody() {
-    return postBody;
-  }
-
-  String getAuthorName() {
-    return authorName;
-  }
-
-  String getAuthorUrl() {
-    return authorUrl;
-  }
-
-  String getAuthorMail() {
-    return authorMail;
-  }
-
-  String getAuthorIp() {
-    return authorIp;
-  }
-
-  String getAuthorId() {
-    return authorId;
-  }
-
-  String[] getAuthorOpenIds() {
-    return authorOpenIds;
-  }
-
-  /**
    * @return Whether the content is "ham" or desirable.
    * @throws MollomException
-   *           If a SPAM check was not performed beforehand.
+   *   If a SPAM check was not performed beforehand.
    */
   public boolean isHam() {
     if (spamClassification == null) {
-      throw new MollomIllegalUsageException("Spamminess of content cannot be determined without doing a SPAM check first.");
+      throw new MollomIllegalUsageException("Spam classification cannot be determined without doing a SPAM check first.");
     }
     return "ham".equals(spamClassification);
   }
@@ -189,62 +231,47 @@ public class Content {
   /**
    * @return Whether the content is "spam" or undesirable.
    * @throws MollomException
-   *           If a SPAM check was not performed beforehand.
+   *   If a SPAM check was not performed beforehand.
    */
   public boolean isSpam() {
     if (spamClassification == null) {
-      throw new MollomIllegalUsageException("Spamminess of content cannot be determined without doing a SPAM check first.");
+      throw new MollomIllegalUsageException("Spam classification cannot be determined without doing a SPAM check first.");
     }
     return "spam".equals(spamClassification);
   }
 
   /**
    * If the Content is determined to be unsure, it is recommended that a CAPTCHA is presented to the user.
-   * 
+   *
    * @return Whether the content is "unsure" or Mollom isn't sure whether it is desirable or not.
    * @throws MollomException
-   *           If a SPAM check was not performed beforehand.
+   *   If a SPAM check was not performed beforehand.
    */
   public boolean isUnsure() {
     if (spamClassification == null) {
-      throw new MollomIllegalUsageException("Spamminess of content cannot be determined without doing a SPAM check first.");
+      throw new MollomIllegalUsageException("Spam classification cannot be determined without doing a SPAM check first.");
     }
     return "unsure".equals(spamClassification);
   }
 
-  /**
-   * @param postTitle The title of the content.
-   */
-  public void setPostTitle(String postTitle) {
-    this.postTitle = postTitle;
+  public Strictness getStrictness() {
+    return strictness;
   }
 
-  /**
-   * @param postBody The body of the content.
-   */
-  public void setPostBody(String postBody) {
-    this.postBody = postBody;
+  public boolean wasStored() {
+    return stored != null;
   }
 
-  /**
-   * @param authorName The name of the content author.
-   */
-  public void setAuthorName(String authorName) {
-    this.authorName = authorName;
+  public boolean isStored() {
+    return stored;
   }
 
-  /**
-   * @param authorUrl The homepage/website URL of the content author.
-   */
-  public void setAuthorUrl(String authorUrl) {
-    this.authorUrl = authorUrl;
+  public String getUrl() {
+    return url;
   }
 
-  /**
-   * @param authorMail The email address of the content author.
-   */
-  public void setAuthorMail(String authorMail) {
-    this.authorMail = authorMail;
+  void setId(String id) {
+    this.id = id;
   }
 
   /**
@@ -269,12 +296,55 @@ public class Content {
   }
 
   /**
+   * @param authorName The name of the content author.
+   */
+  public void setAuthorName(String authorName) {
+    this.authorName = authorName;
+  }
+
+  /**
+   * @param authorMail The email address of the content author.
+   */
+  public void setAuthorMail(String authorMail) {
+    this.authorMail = authorMail;
+  }
+
+  /**
+   * @param authorUrl The homepage/website URL of the content author.
+   */
+  public void setAuthorUrl(String authorUrl) {
+    this.authorUrl = authorUrl;
+  }
+
+  /**
    * The value of a client-side honeypot form element, if non-empty.
-   * The honeypot is a trap to detect automated attackers and will generally result in a 
+   * The honeypot is a trap to detect automated attackers and will generally result in a
    * SPAM classification if filled out.
    */
   public void setHoneypot(String honeypot) {
     this.honeypot = honeypot;
+  }
+
+  /**
+   * @param postTitle The title of the content.
+   */
+  public void setPostTitle(String postTitle) {
+    this.postTitle = postTitle;
+  }
+
+  /**
+   * @param postBody The body of the content.
+   */
+  public void setPostBody(String postBody) {
+    this.postBody = postBody;
+  }
+
+  public void setContextUrl(String contextUrl) {
+    this.contextUrl = contextUrl;
+  }
+
+  public void setContextTitle(String contextTitle) {
+    this.contextTitle = contextTitle;
   }
 
   /**
@@ -292,51 +362,8 @@ public class Content {
     this.allowUnsure = allowUnsure;
   }
 
-  /**
-   * Configure the strictness of Mollom spaminess checks.
-   */
-  public void setStrictness(Strictness strictness) {
-    this.strictness = strictness;
-  }
-
-  String getSpamClassification() {
-    return spamClassification;
-  }
-
-  String getHoneypot() {
-    return honeypot;
-  }
-
-  Check[] getChecks() {
-    return checks;
-  }
-
-  boolean isAllowUnsure() {
+  public boolean isAllowUnsure() {
     return allowUnsure;
-  }
-
-  Strictness getStrictness() {
-    return strictness;
-  }
-
-  boolean isStored() {
-    return stored;
-  }
-
-  String getUrl() {
-    return url;
-  }
-
-  String getContextUrl() {
-    return contextUrl;
-  }
-
-  String getContextTitle() {
-    return contextTitle;
-  }
-
-  void setId(String id) {
-    this.id = id;
   }
 
   void setSpamScore(double spamScore) {
@@ -355,27 +382,36 @@ public class Content {
     this.qualityScore = qualityScore;
   }
 
-  void setReason(String reason) {
-    this.reason = reason;
-  }
-
   void setLanguages(Language[] languages) {
     this.languages = languages;
   }
 
-  void setStored(boolean stored) {
+  void setReason(String reason) {
+    this.reason = reason;
+  }
+
+  /**
+   * Configure the strictness of Mollom spaminess checks.
+   */
+  public void setStrictness(Strictness strictness) {
+    this.strictness = strictness;
+  }
+
+  /**
+   * Informs Mollom whether the content was accepted/stored on the client site.
+   *
+   * Only set a value when a storage change occurred:
+   * - Only set to true after accepting/storing the content.
+   * - Only set to false when the locally stored content is deleted.
+   *
+   * Do not set a value for in-progress form submissions that have not been
+   * stored yet.
+   */
+  public void setStored(boolean stored) {
     this.stored = stored;
   }
 
-  void setUrl(String url) {
+  public void setUrl(String url) {
     this.url = url;
-  }
-
-  void setContextUrl(String contextUrl) {
-    this.contextUrl = contextUrl;
-  }
-
-  void setContextTitle(String contextTitle) {
-    this.contextTitle = contextTitle;
   }
 }

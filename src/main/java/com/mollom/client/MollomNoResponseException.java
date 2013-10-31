@@ -1,8 +1,7 @@
 package com.mollom.client;
 
 /**
- * Trouble communicating with the Mollom servers.
- * Generally thrown when Mollom is experiencing service downtimes.
+ * Thrown in case the Mollom REST API is down or unreachable.
  */
 public class MollomNoResponseException extends MollomException {
   public MollomNoResponseException(String message) {

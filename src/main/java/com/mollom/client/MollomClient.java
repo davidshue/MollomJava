@@ -47,12 +47,15 @@ public class MollomClient {
   private final WebResource whitelistResource;
 
   /**
-   * MollomClient instances are expensive resources. It is recommended that a single MollomClient
-   * instance is shared between multiple threads. The building of requests and receiving of
-   * responses is guaranteed to be thread safe.
+   * Constructs a new MollomClient instance.
+   *
+   * MollomClient instances are expensive resources. It is recommended to share
+   * a single MollomClient instance between multiple threads. Requests and
+   * responses are guaranteed to be thread-safe.
    */
-  MollomClient(Client client, WebResource contentResource, WebResource captchaResource, WebResource feedbackResource, 
-      WebResource blacklistResource, WebResource whitelistResource, int retries) {
+  MollomClient(Client client, WebResource contentResource, WebResource captchaResource,
+      WebResource feedbackResource, WebResource blacklistResource,
+      WebResource whitelistResource, int retries) {
     this.client = client;
     this.contentResource = contentResource;
     this.captchaResource = captchaResource;
@@ -74,64 +77,45 @@ public class MollomClient {
   }
 
   /**
-   * Take in a user-built Content object, make a request to the Mollom service to classify
-   * the given Content, then inject the classification scores back into the original
-   * Content object.
-   * If mollom servers cannot be reached after all of the retries have been expended, classify
-   * the content as either ham or spam (depending on the acceptAllPostsOnError setting
-   * with the reason of "error".
+   * Checks content.
+   *
+   * Injects the Mollom classification scores into the given Content object.
    */
-  public void checkContent(Content content) 
+  public void checkContent(Content content)
       throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
     MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
-    if (content.getPostTitle() != null) {
-      postParams.putSingle("postTitle", content.getPostTitle());
-    }
-    if (content.getPostBody() != null) {
-      postParams.putSingle("postBody", content.getPostBody());
-    }
-    if (content.getAuthorName() != null) {
-      postParams.putSingle("authorName", content.getAuthorName());
-    }
-    if (content.getAuthorUrl() != null) {
-      postParams.putSingle("authorUrl", content.getAuthorUrl());
-    }
-    if (content.getAuthorMail() != null) {
-      postParams.putSingle("authorMail", content.getAuthorMail());
-    }
     if (content.getAuthorIp() != null) {
       postParams.putSingle("authorIp", content.getAuthorIp());
     }
     if (content.getAuthorId() != null) {
       postParams.putSingle("authorId", content.getAuthorId());
     }
-
     if (content.getAuthorOpenIds() != null) {
-      // The Mollom service expects Openids as a space-separated list
+      // Exception: authorOpenID is the only API parameter that accepts multiple
+      // values as a space-separated list.
       String openIds = "";
       for (String authorOpenId : content.getAuthorOpenIds()) {
         openIds += authorOpenId += " ";
       }
       postParams.putSingle("authorOpenid", openIds);
     }
-
-    // The Mollom service expects checks as a multi-param
-    if (content.getChecks() != null) {
-      List<String> checks = new ArrayList<>();
-      for (Check check : content.getChecks()) {
-        checks.add(check.toString());
-      }
-      postParams.put("checks", checks);
+    if (content.getAuthorName() != null) {
+      postParams.putSingle("authorName", content.getAuthorName());
     }
-
-    postParams.putSingle("unsure", content.isAllowUnsure() ? "1" : "0");
-    postParams.putSingle("strictness", content.getStrictness().toString());
+    if (content.getAuthorMail() != null) {
+      postParams.putSingle("authorMail", content.getAuthorMail());
+    }
+    if (content.getAuthorUrl() != null) {
+      postParams.putSingle("authorUrl", content.getAuthorUrl());
+    }
     if (content.getHoneypot() != null) {
       postParams.putSingle("honeypot", content.getHoneypot());
     }
-    postParams.putSingle("stored", content.isStored() ? "1" : "0");
-    if (content.getUrl() != null) {
-      postParams.putSingle("url", content.getUrl());
+    if (content.getPostTitle() != null) {
+      postParams.putSingle("postTitle", content.getPostTitle());
+    }
+    if (content.getPostBody() != null) {
+      postParams.putSingle("postBody", content.getPostBody());
     }
     if (content.getContextUrl() != null) {
       postParams.putSingle("contextUrl", content.getContextUrl());
@@ -140,8 +124,34 @@ public class MollomClient {
       postParams.putSingle("contextTitle", content.getContextTitle());
     }
 
-    // If the user passes in a brand new Content object, map to the Create Content API
-    // If the user passes in a previously checked Content object, map to the Update (and re-check) Content API
+    if (content.getChecks() != null) {
+      List<String> checks = new ArrayList<>();
+      for (Check check : content.getChecks()) {
+        checks.add(check.toString());
+      }
+      postParams.put("checks", checks);
+    }
+    List<Check> requestedChecks = Arrays.asList(content.getChecks());
+    if (requestedChecks.contains(Check.SPAM)) {
+      if (!content.isAllowUnsure()) {
+        postParams.putSingle("unsure", "0");
+      }
+      if (!content.getStrictness() != Strictness.NORMAL) {
+        postParams.putSingle("strictness", content.getStrictness().toString());
+      }
+    }
+
+    // Only send the stored parameter upon a storage change.
+    // @see Content.setStored()
+    if (content.wasStored()) {
+      postParams.putSingle("stored", content.isStored() ? "1" : "0");
+    }
+    if (content.getUrl() != null) {
+      postParams.putSingle("url", content.getUrl());
+    }
+
+    // If the Content has an ID already (subsequent post after e.g. previewing
+    // the content or asking the user to solve a CAPTCHA), re-check the content.
     ClientResponse response;
     if (content.getId() == null) { // Check new content
       response = request("POST", contentResource, postParams);
@@ -149,14 +159,13 @@ public class MollomClient {
       response = request("POST", contentResource.path(content.getId()), postParams);
     }
 
-    // Get the returned content from the Mollom service
+    // Parse the response into a new Content object.
     Content returnedContent = parseBody(response.getEntity(String.class), "content", Content.class);
 
-    // Inject the Mollom assigned ID
+    // Merge classification results into the original Content object.
     content.setId(returnedContent.getId());
+    content.setReason(returnedContent.getReason());
 
-    // Merge classification results into the original Content object
-    List<Check> requestedChecks = Arrays.asList(content.getChecks());
     if (requestedChecks.contains(Check.SPAM)) {
       content.setSpamClassification(returnedContent.getSpamClassification());
       content.setSpamScore(returnedContent.getSpamScore());
@@ -173,104 +182,119 @@ public class MollomClient {
   }
 
   /**
-   * Creates a new Captcha object with a url to the captcha resource.
-   * Use this to create a Captcha that isn't associated with any Content.
-   * This is most commonly used for Captcha-only checks that don't involve Mollom text analysis.
-   * 
-   * @return The created Captcha object, or null if one could not be created
+   * Creates a new CAPTCHA resource.
+   *
+   * Use this to create a standalone CAPTCHA that is not associated with a
+   * content.
+   *
+   * @return The created Captcha object, or null on failure.
    */
-  public Captcha createCaptcha(CaptchaType captchaType, boolean ssl) 
+  public Captcha createCaptcha(CaptchaType captchaType, boolean ssl)
       throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
     return createCaptcha(captchaType, ssl, null);
   }
 
   /**
-   * Creates a new Captcha object with a url to the captcha resource.
-   * A content should be passed in to associate the captcha with a previous unsure content request.
-   * 
-   * @return The created Captcha object, or null if one could not be created
+   * Creates a new CAPTCHA resource linked to an unsure content.
+   *
+   * The passed in Content object must have been classified as unsure. The newly
+   * created CAPTCHA is associated with that content.
+   *
+   * @return The created Captcha object, or null on failure.
    */
-  public Captcha createCaptcha(CaptchaType captchaType, boolean ssl, Content content) 
+  public Captcha createCaptcha(CaptchaType captchaType, boolean ssl, Content content)
       throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
     MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
     postParams.putSingle("type", captchaType.toString());
-    postParams.putSingle("ssl", ssl ? "1" : "0");
-    postParams.putSingle("contentId", content.getId());
-    
+    if (ssl) {
+      postParams.putSingle("ssl", "1");
+    }
+    if (content.getId() != null) {
+      postParams.putSingle("contentId", content.getId());
+    }
+
     ClientResponse response = request("POST", captchaResource, postParams);
     return parseBody(response.getEntity(String.class), "captcha", Captcha.class);
   }
 
   /**
-   * Take the Captcha object (after the user has injected the solution and author information), make a
-   * request to the Mollom service to determine whether or not the solution was correct, and inject the
-   * result back into the Captcha object.
-   * If mollom servers cannot be reached after all of the retries have been expended, mark as either
-   * solved or not solved (depending on the acceptAllPostsOnError setting
-   * with the reason of "error".
+   * Checks a CAPTCHA solution.
+   *
+   * Injects the Mollom check results into the given Captcha object.
    */
-  public void checkCaptcha(Captcha captcha) 
+  public void checkCaptcha(Captcha captcha)
       throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
     MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
     if (captcha.getSolution() == null) {
       throw new MollomIllegalUsageException("Cannot check a CAPTCHA without a solution.");
     }
     postParams.putSingle("solution", captcha.getSolution());
+
     if (captcha.getAuthorIp() != null) {
       postParams.putSingle("authorIp", captcha.getAuthorIp());
     }
     if (captcha.getAuthorId() != null) {
       postParams.putSingle("authorId", captcha.getAuthorId());
     }
-    if (captcha.getAuthorMail() != null) {
-      postParams.putSingle("authorMail", captcha.getAuthorMail());
-    }
-    if (captcha.getAuthorName() != null) {
-      postParams.putSingle("authorName", captcha.getAuthorName());
-    }
-    if (captcha.getAuthorUrl() != null) {
-      postParams.putSingle("authorUrl", captcha.getAuthorUrl());
-    }
     if (captcha.getAuthorOpenIds() != null) {
-      // The Mollom service expects Openids as a space-separated list
+      // Exception: authorOpenID is the only API parameter that accepts multiple
+      // values as a space-separated list.
       String openIds = "";
       for (String authorOpenId : captcha.getAuthorOpenIds()) {
         openIds += authorOpenId += " ";
       }
       postParams.putSingle("authorOpenid", openIds);
     }
-    postParams.putSingle("rateLimit", Integer.toString(captcha.getRateLimit()));
+    if (captcha.getAuthorName() != null) {
+      postParams.putSingle("authorName", captcha.getAuthorName());
+    }
+    if (captcha.getAuthorMail() != null) {
+      postParams.putSingle("authorMail", captcha.getAuthorMail());
+    }
+    if (captcha.getAuthorUrl() != null) {
+      postParams.putSingle("authorUrl", captcha.getAuthorUrl());
+    }
+
+    if (captcha.getRateLimit() > 0) {
+      postParams.putSingle("rateLimit", Integer.toString(captcha.getRateLimit()));
+    }
 
     ClientResponse response = request("POST", captchaResource.path(captcha.getId()), postParams);
+
     Captcha returnedCaptcha = parseBody(response.getEntity(String.class), "captcha", Captcha.class);
+
     captcha.setSolved(returnedCaptcha.isSolved() ? 1 : 0);
     captcha.setReason(returnedCaptcha.getReason());
   }
 
   /**
-   * Send feedback for a previously checked content.
-   * This mechanism allows Mollom to learn from its mistakes. For example, if a spam message was erroneously classified as ham, Mollom will use that information
-   * to fine-tune its spam detection mechanisms. The more feedback provided to Mollom, the more effective it becomes. If possible, this feedback mechanism
-   * should be built into all Mollom applications.
-   * Feedback also affects the reputation of the author of the content.
+   * Sends feedback for a previously checked content.
    */
-  public void sendFeedback(Content content, FeedbackReason feedback) 
-      throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
-    sendFeedback(content, null, feedback);
+  public void sendFeedback(Content content, FeedbackReason reason)
+      throws MollomIllegalUsageException, MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
+    sendFeedback(content, null, reason);
   }
 
   /**
-   * Send feedback for a previously checked captcha.
-   * Feedback affects the reputation of the author of the content.
-   * This call should be used only when only using captchas. It is not necessary to send feedback for a captcha if it was associated with a Content already.
+   * Sends feedback for a previously checked CAPTCHA.
+   *
+   * Only used for standalone CAPTCHAs. For CAPTCHAs pertaining to content that
+   * was classified as unsure, it is sufficient to send feedback for the content
+   * only.
    */
-  public void sendFeedback(Captcha captcha, FeedbackReason feedback) 
-      throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
-    sendFeedback(null, captcha, feedback);
+  public void sendFeedback(Captcha captcha, FeedbackReason reason)
+      throws MollomIllegalUsageException, MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
+    sendFeedback(null, captcha, reason);
   }
 
-  private void sendFeedback(Content content, Captcha captcha, FeedbackReason feedback) 
-      throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
+  private void sendFeedback(Content content, Captcha captcha, FeedbackReason reason)
+      throws MollomIllegalUsageException, MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
+    if (content.getId() == null && captcha.getId() == null) {
+      throw new MollomIllegalUsageException("Cannot send feedback without a Content or Captcha ID.");
+    }
+    if (reason == null) {
+      throw new MollomIllegalUsageException("Cannot send feedback without a reason.");
+    }
     MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
     if (content != null) {
       postParams.putSingle("contentId", content.getId());
@@ -278,51 +302,63 @@ public class MollomClient {
     if (captcha != null) {
       postParams.putSingle("captchaId", captcha.getId());
     }
-    postParams.putSingle("reason", feedback.toString());
+    postParams.putSingle("reason", reason.toString());
     request("POST", feedbackResource, postParams);
   }
 
   /**
    * Notify Mollom that the content has been stored on the client-side.
-   * Used to submit content to Mollom's Content Moderation Platform.
-   * 
+   *
    * @see MollomClient#markAsStored(Content, String, String, String)
    */
-  public void markAsStored(Content content) 
+  public void markAsStored(Content content)
       throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
     markAsStored(content, null, null, null);
   }
 
   /**
    * Notify Mollom that the content has been stored on the client-side.
-   * Used to submit content to Mollom's Content Moderation Platform.
    */
-  public void markAsStored(Content content, String url, String contextUrl, String contextTitle) 
+  public void markAsStored(Content content, String url, String contextUrl, String contextTitle)
       throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
     content.setChecks(); // Don't re-check anything
     content.setStored(true);
-    content.setUrl(url);
-    content.setContextUrl(contextUrl);
-    content.setContextTitle(contextTitle);
+    // The final/resulting URL of a new content is typically known after
+    // accepting and storing a content only; supply it to Mollom.
+    if (url != null) {
+      content.setUrl(url);
+    }
+
+    // The context of a content is known before accepting and storing a content
+    // already and should thus be supplied with the regular checkContent() calls
+    // already.
+    if (contextUrl != null) {
+      content.setContextUrl(contextUrl);
+    }
+    if (contextTitle != null) {
+      content.setContextTitle(contextTitle);
+    }
+
     checkContent(content);
   }
 
   /**
    * Notify Mollom that the content has been deleted on the client-side.
-   * Used to remove content from Mollom's Content Moderation Platform.
    */
-  public void markAsDeleted(Content content) 
+  public void markAsDeleted(Content content)
       throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
     content.setChecks(); // Don't re-check anything
     content.setStored(false);
+    // TODO: Ideally send the stored parameter only.
     checkContent(content);
   }
 
   /**
-   * Saves a blacklist entry to Mollom.
-   * If the blacklist entry already exists, update Mollom with the new properties.
+   * Saves a blacklist entry.
+   *
+   * If the entry already exists, update it with the new properties.
    */
-  public void saveBlacklistEntry(BlacklistEntry blacklistEntry) 
+  public void saveBlacklistEntry(BlacklistEntry blacklistEntry)
       throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
     MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
     if (blacklistEntry.getValue() == null) {
@@ -336,7 +372,7 @@ public class MollomClient {
     if (blacklistEntry.getNote() != null) {
       postParams.putSingle("note", blacklistEntry.getNote());
     }
-    
+
     ClientResponse response;
     if (blacklistEntry.getId() != null) { // Update existing entry
       response = request("POST", blacklistResource.path(blacklistEntry.getId()), postParams);
@@ -345,45 +381,53 @@ public class MollomClient {
     }
 
     BlacklistEntry returnedBlacklistEntry = parseBody(response.getEntity(String.class), "entry", BlacklistEntry.class);
-    blacklistEntry.setCreated(returnedBlacklistEntry.getCreated());
     blacklistEntry.setId(returnedBlacklistEntry.getId());
+    blacklistEntry.setCreated(returnedBlacklistEntry.getCreated());
     blacklistEntry.setStatus(returnedBlacklistEntry.isEnabled() ? 1 : 0);
+    // The stored value is not necessarily the given value; at minimum,
+    // converted to lowercase.
+    blacklistEntry.setValue(returnedBlacklistEntry.getValue());
   }
 
   /**
-   * Deletes a blacklist entry from Mollom.
+   * Deletes a blacklist entry.
    */
-  public void deleteBlacklistEntry(BlacklistEntry blacklistEntry) 
+  public void deleteBlacklistEntry(BlacklistEntry blacklistEntry)
       throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
     request("POST", blacklistResource.path(blacklistEntry.getId()).path("delete"), new MultivaluedMapImpl());
   }
 
   /**
-   * @return A list of all of the blacklist entries (owned by this public key).
+   * Lists all blacklist entries for this public key.
+   *
+   * @return A list of all blacklist entries.
    */
-  public List<BlacklistEntry> listBlacklistEntries() 
+  public List<BlacklistEntry> listBlacklistEntries()
       throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
     ClientResponse response = request("GET", blacklistResource);
     return parseList(response.getEntity(String.class), "entry", BlacklistEntry.class);
   }
 
   /**
-   * @return The blacklist entry with the given id. (or null if one doesn't exist)
+   * Retrieves a blacklist entry with a given ID.
+   *
+   * @return The blacklist entry or null if not found.
    */
-  public BlacklistEntry getBlacklistEntry(String blacklistEntryId) 
+  public BlacklistEntry getBlacklistEntry(String blacklistEntryId)
       throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
     ClientResponse response = request("GET", blacklistResource.path(blacklistEntryId));
     return parseBody(response.getEntity(String.class), "entry", BlacklistEntry.class);
   }
 
   /**
-   * Saves a whitelist entry to Mollom.
-   * If the whitelist entry already exists, update Mollom with the new properties.
+   * Saves a whitelist entry.
+   *
+   * If the entry already exists, update it with the new properties.
    */
-  public void saveWhitelistEntry(WhitelistEntry whitelistEntry) 
+  public void saveWhitelistEntry(WhitelistEntry whitelistEntry)
       throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
-    if (whitelistEntry.getContext() == Context.ALLFIELDS 
-        || whitelistEntry.getContext() == Context.LINKS 
+    if (whitelistEntry.getContext() == Context.ALLFIELDS
+        || whitelistEntry.getContext() == Context.LINKS
         || whitelistEntry.getContext() == Context.POSTTITLE) {
       throw new MollomConfigurationException("Given context not supported for WhitelistEntry.");
     }
@@ -407,58 +451,67 @@ public class MollomClient {
     }
 
     WhitelistEntry returnedWhitelistEntry = parseBody(response.getEntity(String.class), "entry", WhitelistEntry.class);
-    whitelistEntry.setCreated(returnedWhitelistEntry.getCreated());
     whitelistEntry.setId(returnedWhitelistEntry.getId());
-    whitelistEntry.setLastMatch(returnedWhitelistEntry.getLastMatch());
-    whitelistEntry.setMatchCount(returnedWhitelistEntry.getMatchCount());
+    whitelistEntry.setCreated(returnedWhitelistEntry.getCreated());
     whitelistEntry.setStatus(returnedWhitelistEntry.isEnabled() ? 1 : 0);
+    // The stored value is not necessarily the given value; at minimum,
+    // converted to lowercase.
+    whitelistEntry.setValue(returnedWhitelistEntry.getValue());
   }
 
   /**
-   * Deletes a whitelist entry from Mollom.
+   * Deletes a whitelist entry.
    */
-  public void deleteWhitelistEntry(WhitelistEntry whitelistEntry) 
+  public void deleteWhitelistEntry(WhitelistEntry whitelistEntry)
       throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
     request("POST", whitelistResource.path(whitelistEntry.getId()).path("delete"), new MultivaluedMapImpl());
   }
 
   /**
-   * @return A list of all of the whitelist entries (owned by this public key).
+   * Lists all whitelist entries for this public key.
+   *
+   * @return A list of all whitelist entries.
    */
-  public List<WhitelistEntry> listWhitelistEntries() 
+  public List<WhitelistEntry> listWhitelistEntries()
       throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
     ClientResponse response = request("GET", whitelistResource);
     return parseList(response.getEntity(String.class), "entry", WhitelistEntry.class);
   }
 
   /**
-   * @return The whitelist entry with the given id. (or null if one doesn't exist)
+   * Retrieves a whitelist entry with a given ID.
+   *
+   * @return The whitelist entry or null if not found.
    */
-  public WhitelistEntry getWhitelistEntry(String whitelistEntryId) 
+  public WhitelistEntry getWhitelistEntry(String whitelistEntryId)
       throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
     ClientResponse response = request("GET", whitelistResource.path(whitelistEntryId));
     return parseBody(response.getEntity(String.class), "entry", WhitelistEntry.class);
   }
 
   /**
-   * Destroy the MollomClient object. Not doing this can cause connection leaks.
-   * The MollomClient must not be reused after this method is called otherwise undefined behavior will occur.
+   * Destroys the MollomClient object.
+   *
+   * Not doing this can cause connection leaks.
+   *
+   * The MollomClient instance must not be reused after this method is called;
+   * otherwise, undefined behavior will occur.
    */
   public void destroy() {
     client.destroy();
   }
 
-  private ClientResponse request(String method, WebResource resource) 
+  private ClientResponse request(String method, WebResource resource)
       throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
     return request(method, resource, null);
   }
 
-  private ClientResponse request(String method, WebResource resource, MultivaluedMap<String, String> params) 
+  private ClientResponse request(String method, WebResource resource, MultivaluedMap<String, String> params)
       throws MollomBadRequestException, MollomUnexpectedResponseException, MollomNoResponseException {
     for (int retryAttemptNumber = 0; retryAttemptNumber <= retries; retryAttemptNumber++) {
       try {
         ClientResponse response;
-        if(params != null) {
+        if (params != null) {
           response = resource
             .accept(MediaType.APPLICATION_XML)
             .type(MediaType.APPLICATION_FORM_URLENCODED)
@@ -476,28 +529,32 @@ public class MollomClient {
         }
         return response;
       } catch (ClientHandlerException e) {
-        logger.log(Level.WARNING, "Failed to contact the Mollom server.", e);
+        logger.log(Level.WARNING, "Failed to contact Mollom service.", e);
       }
     }
-    throw new MollomNoResponseException("Failed to contact the Mollom server after retries.");
+    throw new MollomNoResponseException("Failed to contact Mollom service after retries.");
   }
-  
+
   /**
-   * Expected xml in the format of:
-   * <response> 
-   *  <code>200</code> 
+   * Parses an object out of a response body.
+   *
+   * Expects XML in the format of:
+   * <response>
+   *  <code>200</code>
    *  <bodyTag>...</bodyTag>
    * </response>
-   * 
+   *
    * @return JAXB unmarshalled expectedType object from the response.
+   *
    * @throws MollomUnexpectedResponseException
-   *           Unable to parse the response from the Mollom server. Usually this means there is a version mismatch between the client library 
-   *           and the Mollom API.
+   *   Unable to parse the response from the Mollom server. Usually this means
+   *   there is a version mismatch between the client library and the Mollom API.
    */
   private <T> T parseBody(String xml, String bodyTag, Class<T> expectedType) throws MollomUnexpectedResponseException {
     try {
-      // We have to parse the xml into a document first before passing it to JAXB to get the body
-      // because the Mollom service returns the object wrapped in a <Response> object
+      // We have to parse the XML into a Document before passing it to JAXB to
+      // get the body, because the Mollom service response returns the object
+      // wrapped in a <Response> object.
       Document document = documentBuilder.parse(new InputSource(new StringReader(xml)));
       Node bodyNode = document.getElementsByTagName(bodyTag).item(0);
       return unmarshaller.unmarshal(bodyNode, expectedType).getValue();
@@ -507,24 +564,32 @@ public class MollomClient {
   }
 
   /**
-   * Expected xml in the format of:
-   * <response> 
-   *   <code>200</code> 
+   * Parses a list of objects out of a response body.
+   *
+   * Expects XML in the format of:
+   * <response>
+   *   <code>200</code>
    *   <list>
    *     <bodyTag>...</bodyTag>
    *     ...
    *   </list>
    * </response>
-   * 
-   * @return List of JAXB unmarshalled expectedType object from the response.
+   *
+   * @return List of JAXB unmarshalled expectedType objects from the response.
+   *
    * @throws MollomUnexpectedResponseException
-   *           Unable to parse the response from the Mollom server. Usually this means there is a version mismatch between the client library 
-   *           and the Mollom API.
+   *   Unable to parse the response from the Mollom server. Usually this means
+   *   there is a version mismatch between the client library and the Mollom API.
+   *
+   * @todo Support the listCount, listOffset, listTotal response parameters
+   *   (required for implementing client-side pagination of e.g. blacklist entries);
+   *   cf. http://mollom.com/api#response-list
    */
   private <T> List<T> parseList(String xml, String bodyTag, Class<T> expectedType) throws MollomUnexpectedResponseException {
     try {
-      // We have to parse the xml into a document first before passing it to JAXB to get the body
-      // because the Mollom service returns the object wrapped in a <Response> object
+      // We have to parse the XML into a Document before passing it to JAXB to
+      // get the body, because the Mollom service response returns the object
+      // wrapped in a <Response> object.
       Document document = documentBuilder.parse(new InputSource(new StringReader(xml)));
 
       List<T> list = new ArrayList<>();
