@@ -63,21 +63,21 @@ public class Content {
   /**
    * Fields to inform Mollom about locally stored content.
    */
-  private boolean stored;
+  private int stored;
   // Absolute URL to the stored content.
   private String url;
 
   /**
-   * Constucts a new Content to be checked by Mollom.
+   * Constructs a new Content to be checked by Mollom.
    */
   public Content() {
     allowUnsure = true;
     strictness = Strictness.NORMAL;
     checks = new Check[] { Check.SPAM };
-    stored = false;
     spamScore = -1;
     profanityScore = -1;
     qualityScore = -1;
+    stored = -1;
   }
 
   /**
@@ -258,11 +258,7 @@ public class Content {
     return strictness;
   }
 
-  public boolean wasStored() {
-    return stored != null;
-  }
-
-  public boolean isStored() {
+  public int getStored() {
     return stored;
   }
 
@@ -408,7 +404,7 @@ public class Content {
    * stored yet.
    */
   public void setStored(boolean stored) {
-    this.stored = stored;
+    this.stored = stored ? 1 : 0;
   }
 
   public void setUrl(String url) {

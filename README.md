@@ -122,7 +122,7 @@ MollomClient client = MollomClientBuilder.create()
 
 BlacklistEntry entry = new BlacklistEntry();
 entry.setReason("spam");
-entry.setValue("viagra");
+entry.setValue("argaiv");
 
 try {
     client.saveBlacklistEntry(entry);
@@ -145,7 +145,7 @@ MollomClient client = MollomClientBuilder.create()
 String blacklistEntryId;
 
 BlacklistEntry entry = client.getBlacklistEntry(blacklistEntryId);
-entry.setValue("cialis");
+entry.setValue("silaic");
 
 try {
     client.saveBlacklistEntry(entry);

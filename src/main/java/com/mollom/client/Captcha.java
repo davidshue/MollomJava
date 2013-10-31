@@ -29,8 +29,6 @@ public class Captcha {
 
   /**
    * Seconds that must have passed by for the same author to post again.
-   *
-   * Defaults to 0 seconds.
    */
   private int rateLimit;
 
@@ -40,7 +38,7 @@ public class Captcha {
 
   public Captcha() {
     solved = -1;
-    rateLimit = 0;
+    rateLimit = -1;
   }
 
   public String getId() {
