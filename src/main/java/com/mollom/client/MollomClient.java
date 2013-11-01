@@ -136,7 +136,7 @@ public class MollomClient {
       if (!content.isAllowUnsure()) {
         postParams.putSingle("unsure", "0");
       }
-      if (!content.getStrictness() != Strictness.NORMAL) {
+      if (content.getStrictness() != Strictness.NORMAL) {
         postParams.putSingle("strictness", content.getStrictness().toString());
       }
     }
