@@ -13,7 +13,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 
 /**
- * Builds a new mollomClient instance to interact with the Mollom service.
+ * Builds a new MollomClient instance to interact with the Mollom service.
  *
  * The initial entry point for the Mollom API library.
  */
