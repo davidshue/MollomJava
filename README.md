@@ -12,19 +12,36 @@ For most API calls, you should provide an author IP address.  Ensure that your c
 
 For more information, see http://mollom.com/api/handling-author-ip-addresses
 
+### Instantiation
+
+The initial entry point for the Mollom API library is MollomClientBuilder, which builds a new MollomClient instance to interact with the Mollom service:
+
+```java
+// Create a new Mollom client.
+MollomClient client = MollomClientBuilder.create()
+    .withPlatformName("Spring")
+    .withPlatformVersion("3.2.4")
+    // ... more client configuration ...
+    .build("publicKey", "privateKey");
+```
+
+MollomClient instances are expensive resources and a single MollomClient instance should be shared between multiple threads.  Requests and responses are thread-safe.
+
+Before shutting down your application, ensure to destroy the MollomClient instance to prevent connection leaks:
+
+```java
+// Cleanup.
+client.destroy();
+```
+
+Note: Every new instance automatically performs an initial request to verify your API keys.  This is expected to happen frequently, but no more than once per day.  If Mollom encounters too many/excessive API key verification calls, your API keys will be disabled.
+
 
 ### Content
 
 #### Checking content
 
 ```java
-// Create a new Mollom client.
-MollomClient client = MollomClientBuilder.create()
-    .withPlatformName("Example Application")
-    .withPlatformVersion("1.0")
-    // ... more client configuration ...
-    .build("publicKey", "privateKey");
-
 // Create a new Content to check.
 Content content = new Content();
 content.setAuthorIp("192.168.1.1");
@@ -43,7 +60,7 @@ if (content.isHam()) {
 } else if (content.isUnsure()) {
     // Ask the user to solve a CAPTCHA.
     Captcha captcha = client.createCaptcha(CaptchaType.IMAGE, false, content);
-    catpcha.setAuthorIp("192.168.1.1");
+    captcha.setAuthorIp("192.168.1.1");
 
     int captchaRetries = 3;
     String solution;
@@ -70,9 +87,6 @@ if (content.isHam()) {
 } else {
     // Spam: Reject the post.
 }
-
-// Cleanup.
-client.destroy();
 ```
 
 ### Feedback
@@ -91,10 +105,6 @@ The more feedback is provided to Mollom, the more effective it becomes.
 #### Sending feedback
 
 ```java
-MollomClient client = MollomClientBuilder.create()
-    // ...
-    .build("publicKey", "privateKey");
-
 // Previously checked content that was incorrectly classified.
 Content content;
 
@@ -103,8 +113,6 @@ try {
 } catch (MollomException e) {
     // Invalid request or Mollom service downtime.
 }
-
-client.destroy();
 ```
 
 ### Blacklist
@@ -116,10 +124,6 @@ custom blacklist.  Upon matching a blacklist entry, content is blocked.
 #### Adding a blacklist entry
 
 ```java
-MollomClient client = MollomClientBuilder.create()
-    // ...
-    .build("publicKey", "privateKey");
-
 BlacklistEntry entry = new BlacklistEntry();
 entry.setReason("spam");
 entry.setValue("argaiv");
@@ -129,17 +133,11 @@ try {
 } catch (MollomException e) {
     // Invalid request or Mollom service downtime.
 }
-
-client.destroy();
 ```
 
 #### Updating a blacklist entry
 
 ```java
-MollomClient client = MollomClientBuilder.create()
-    // ...
-    .build("publicKey", "privateKey");
-
 // ID of a blacklist entry to update.
 // You can list all blacklist entries using client.listBlacklistEntries().
 String blacklistEntryId;
@@ -152,8 +150,6 @@ try {
 } catch (MollomException e) {
     // Invalid request or Mollom service downtime.
 }
-
-client.destroy();
 ```
 
 ### Whitelist
@@ -162,6 +158,7 @@ Next to a custom blacklist, you can define a custom whitelist, which is checked
 first.
 
 Upon a positive whitelist match, no other checks are performed:
+
 * Content API's spam check returns ham.
 * Content API's profanity check returns non-profane.
 * Blacklist entries are not checked.
@@ -169,10 +166,6 @@ Upon a positive whitelist match, no other checks are performed:
 #### Adding a whitelist entry
 
 ```java
-MollomClient client = MollomClientBuilder.create()
-    // ...
-    .build("publicKey", "privateKey");
-
 WhitelistEntry entry = new WhitelistEntry();
 entry.setValue(123);
 entry.setContext(Context.AUTHORID);
@@ -182,17 +175,11 @@ try {
 } catch (MollomException e) {
     // Invalid request or Mollom service downtime.
 }
-
-client.destroy();
 ```
 
 #### Updating a whitelist entry
 
 ```java
-MollomClient client = MollomClientBuilder.create()
-    // ...
-    .build("publicKey", "privateKey");
-
 // ID of a whitelist entry to update.
 // You can list all whitelist entries using client.listWhitelistEntries().
 String whitelistEntryId;
@@ -205,8 +192,6 @@ try {
 } catch (MollomException e) {
     // Invalid request or Mollom service downtime.
 }
-
-client.destroy();
 ```
 
 ## Known issues
