@@ -28,7 +28,7 @@ public class MollomClientBuilder {
   private static final int DEFAULT_READ_TIMEOUT = 1500;
 
   private static final String DEFAULT_CLIENT_NAME = "MollomJava";
-  private static final String DEFAULT_CLIENT_VERSION = "2.0-SNAPSHOT";
+  private static final String DEFAULT_CLIENT_VERSION = "2.0.0";
 
   // Client behavior settings.
   private boolean testing;
