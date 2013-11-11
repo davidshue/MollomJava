@@ -207,7 +207,7 @@ public class MollomClient {
     MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
     postParams.putSingle("type", captchaType.toString());
     postParams.putSingle("ssl", ssl ? "1" : "0");
-    if (content.getId() != null) {
+    if (content != null && content.getId() != null) {
       postParams.putSingle("contentId", content.getId());
     }
 
