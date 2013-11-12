@@ -6,6 +6,8 @@ A Java client library for the [Mollom REST API](https://mollom.com/api).
 
 * Jersey client 1.16 with Jersey OAuth library.
 
+Pre-built JARs are available for all [releases](https://github.com/Mollom/MollomJava/releases).
+
 ## Usage
 
 For most API calls, you should provide an author IP address.  Ensure that your client determines the correct IP address of all site visitors.  HTTP-level caches and reverse-proxies typically forward the actual IP address in the `X-Forwarded-For` or `X-Cluster-Client-IP` HTTP request header.
