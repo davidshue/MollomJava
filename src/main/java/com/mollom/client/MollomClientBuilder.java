@@ -9,6 +9,9 @@ import com.sun.jersey.oauth.client.OAuthClientFilter;
 import com.sun.jersey.oauth.signature.OAuthParameters;
 import com.sun.jersey.oauth.signature.OAuthSecrets;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 
@@ -43,6 +46,9 @@ public class MollomClientBuilder {
   private String platformVersion;
   private String clientName;
   private String clientVersion;
+
+  // Configurations sent to Mollom
+  private ExpectedLanguage[] expectedLanguages;
 
   public static MollomClientBuilder create() {
     return new MollomClientBuilder();
@@ -214,6 +220,21 @@ public class MollomClientBuilder {
   }
 
   /**
+   * Sets the list of languages that Mollom should expect from this site.
+   * All content that is of a different language will be penalized.
+   * WARNING: This is a global configuration and will affect all clients connecting to
+   * Mollom using the same public/private keys. This configuration is persisted until
+   * it is changed.
+   * To disable the expectedLanguages feature, this method needs to be explicitly called
+   * with no parameters. If this method isn't called on setup, it will default to the
+   * existing settings.
+   */
+  public MollomClientBuilder withExpectedLanguages(ExpectedLanguage... expectedLanguages) {
+    this.expectedLanguages = expectedLanguages;
+    return this;
+  }
+  
+  /**
    * Builds the MollomClient object as configured.
    *
    * @throws MollomConfigurationException If could not authenticate with the Mollom service.
@@ -244,11 +265,36 @@ public class MollomClientBuilder {
     if (privateKey == null || privateKey.equals("")) {
       throw new MollomConfigurationException("The property `privateKey` must be configured.");
     }
+    // Null values means that the user never explicitly set the value, so don't pass the parameter to Mollom
+    // This accomplishes two things:
+    // 1) saves the bandwidth by sending a slightly smaller payload
+    // 2) if the parameter wasn't sent at all, the default Mollom behavior is to use the existing value
     MultivaluedMap<String, String> postParams = new MultivaluedMapImpl();
-    postParams.putSingle("platformName", platformName);
-    postParams.putSingle("platformVersion", platformVersion);
-    postParams.putSingle("clientName", clientName);
-    postParams.putSingle("clientVersion", clientVersion);
+    if (platformName != null) {
+      postParams.putSingle("platformName", platformName);
+    }
+    if (platformVersion != null) {
+      postParams.putSingle("platformVersion", platformVersion);
+    }
+    if (clientName != null) {
+      postParams.putSingle("clientName", clientName);
+    }
+    if (clientVersion != null) {
+      postParams.putSingle("clientVersion", clientVersion);
+    }
+    if (expectedLanguages != null) {
+      List<String> expectedLanguageCodes = new ArrayList<>();
+      // If the expectedLanguages list is empty, but not null, it means the user explicitly wants to disable the feature
+      // in that case, we need to send "?expectedLanguages=" to the server, which is accomplished by adding "" to the list
+      if (expectedLanguages.length > 0) {
+        for (ExpectedLanguage expectedLanguage : expectedLanguages) {
+          expectedLanguageCodes.add(expectedLanguage.getCode());
+        }
+      } else {
+        expectedLanguageCodes.add("");
+      }
+      postParams.put("expectedLanguages", expectedLanguageCodes);
+    }
     ClientResponse response = rootResource
       .path("site")
       .path(publicKey)
