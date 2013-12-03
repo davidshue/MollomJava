@@ -59,6 +59,7 @@ public class Content {
   private Check[] checks;
   private boolean allowUnsure;
   private Strictness strictness;
+  private ContentType type;
 
   /**
    * Fields to inform Mollom about locally stored content.
@@ -258,6 +259,10 @@ public class Content {
     return strictness;
   }
 
+  public ContentType getType() {
+    return type;
+  }
+
   public int getStored() {
     return stored;
   }
@@ -391,6 +396,14 @@ public class Content {
    */
   public void setStrictness(Strictness strictness) {
     this.strictness = strictness;
+  }
+
+  /**
+   * Set the content type of this piece of content. Defaults to CONTENT, which is the standard
+   * behavior. Currently, the only other supported ContentType is USER for user registration forms.
+   */
+  public void setType(ContentType type) {
+    this.type = type;
   }
 
   /**

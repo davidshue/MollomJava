@@ -124,6 +124,11 @@ public class MollomClient {
       postParams.putSingle("contextTitle", content.getContextTitle());
     }
 
+    // Don't bother sending anything for the default CONTENT, since Mollom assumes that anyways
+    if (content.getType() != null && content.getType() != ContentType.CONTENT) {
+      postParams.putSingle("type", content.getType().toString());
+    }
+
     if (content.getChecks() != null) {
       List<String> checks = new ArrayList<>();
       for (Check check : content.getChecks()) {
