@@ -38,6 +38,22 @@ client.destroy();
 
 Note: Every new instance automatically performs an initial request to verify your API keys.  This is expected to happen frequently, but no more than once per day.  If Mollom encounters too many/excessive API key verification calls, your API keys will be disabled.
 
+### Testing Mollom
+
+When testing your API implementation, it is recommended to use switch the client to testing mode, which uses the dev.mollom.com endpoint.
+```java
+// Create a new Mollom client in testing mode.
+MollomClient client = MollomClientBuilder.create()
+    .withPlatformName("Spring")
+    .withPlatformVersion("3.2.4")
+    .withTesting(true)
+    // ... more client configuration ...
+    .build("publicKey", "privateKey");
+```
+Testing mode differences:
+- checkContent() only reacts to the literal strings "spam", "ham", and "unsure" in the postTitle and postBody parameters.
+- If none of the literal strings is contained, and no blacklist/whitelist entries matched, the final spamClassification will be "unsure".
+- checkCaptcha() only accepts "correct" for image CAPTCHAs and "demo" for audio CAPTCHAs as the correct solution.
 
 ### Content
 
