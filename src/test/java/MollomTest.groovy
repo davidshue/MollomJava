@@ -1,3 +1,5 @@
+import org.junit.After
+import org.junit.Before
 import org.junit.Test
 
 import com.mollom.client.Captcha
@@ -5,26 +7,33 @@ import com.mollom.client.CaptchaType
 import com.mollom.client.Content
 import com.mollom.client.MollomClient
 import com.mollom.client.MollomClientBuilder
-import com.mollom.client.MollomException
 
 
 public class MollomTest
 {
+	private MollomClient client
 
-	@Test
-	public void test() throws Exception
-	{
+	@Before
+	void before() {
 		// Create a new Mollom client.
-		MollomClient client = MollomClientBuilder.create()
-		    .withPlatformName("Spring")
-		    .withPlatformVersion("3.2.4")
-		    // ... more client configuration ...
-		    .build("44188fce43d60704ae08bc2615edc341", "42637ecc1c086f0e19b854bb4e7ce747")
+		client = MollomClientBuilder.create()
+				.withPlatformName("Spring")
+				.withPlatformVersion("3.2.4")
+				//.withTesting(true)
+				//.build('1xpoj741hs7qt10btkxggvdfusuyda8a', 'ymmuups1ag5r31ju1a4swxab30qxbwe4')
+				// ... more client configuration ...
+				.build("44188fce43d60704ae08bc2615edc341", "42637ecc1c086f0e19b854bb4e7ce747")
+	}
+	
+	@Test
+	void test() throws Exception
+	{
 		
 		// Create a new Content to check.
 		Content content = new Content()
 		content.setAuthorIp("192.168.1.1")
-		content.setPostBody('[b][url=http://www.timberlandbootstores.com/]discountdiscount timberland boots cheap timberland boots')
+		//content.postBody = 'This is my first baby ever.'
+		content.setPostBody('I had an interesting encounter yesterday') // ham
 		
 		try {
 		    client.checkContent(content)
@@ -72,6 +81,11 @@ public class MollomTest
 			println 'content is spam'
 			// Spam: Reject the post.
 		}	
+	}
+	
+	@After
+	void tearDown() {
+		client.destroy()
 	}
 	
 
