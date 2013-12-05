@@ -24,7 +24,7 @@ public class MollomTest
 		// Create a new Content to check.
 		Content content = new Content()
 		content.setAuthorIp("192.168.1.1")
-		content.setPostBody("This is a test comment.")
+		content.setPostBody('[b][url=http://www.timberlandbootstores.com/]discountdiscount timberland boots cheap timberland boots')
 		
 		try {
 		    client.checkContent(content)
@@ -44,11 +44,14 @@ public class MollomTest
 			int captchaRetries = 3
 			String solution
 			
-			(0..3).each {
+			(0..3).each {it->
+				println it
 				// Output the image from captcha.getUrl() to the user to get solution.
 				//solution = getUserSolution(captcha.getUrl());
-				solution = captcha.getSolution()
-				captcha.setSolution(solution)
+				println "captcha url: ${captcha.url}"
+				println "captcha solution: ${captcha.solution}"
+				
+				captcha.setSolution('fake solution')
 				client.checkCaptcha(captcha)
 				
 				// If the user is able to change the post while solving the CAPTCHA,
@@ -58,6 +61,7 @@ public class MollomTest
 				client.checkContent(content)
 				
 				if (content.isHam()) {
+					println 'after captcha verification, it is ham'
 					// Accept the post.
 					return
 				}
