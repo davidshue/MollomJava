@@ -32,8 +32,20 @@ public class MollomTest
 		// Create a new Content to check.
 		Content content = new Content()
 		content.setAuthorIp("192.168.1.1")
+		content.postTitle = 'My first time'
+		//content.postBody = 'This is a test comment.' // unsure
 		//content.postBody = 'This is my first baby ever.'
-		content.setPostBody('I had an interesting encounter yesterday') // ham
+		content.postBody = """
+Please find attached your Advice containing information on your transactions of last working day with the bank.
+
+ Please do not reply to this e-mail address. If you have any queries, please contact our Customer Services. 
+
+ Yours faithfully
+
+ HSBC Bank (UK) Company Limited
+
+"""
+		//content.setPostBody('I had an interesting encounter yesterday') // ham
 		
 		try {
 		    client.checkContent(content)
