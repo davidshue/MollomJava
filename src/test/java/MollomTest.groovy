@@ -1,3 +1,4 @@
+import org.apache.commons.lang.math.RandomUtils
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -12,7 +13,7 @@ import com.mollom.client.MollomClientBuilder
 public class MollomTest
 {
 	private MollomClient client
-
+	
 	@Before
 	void before() {
 		// Create a new Mollom client.
@@ -31,7 +32,9 @@ public class MollomTest
 		
 		// Create a new Content to check.
 		Content content = new Content()
-		content.setAuthorIp("192.168.1.1")
+		String ip = randomIp()
+		println ip
+		content.setAuthorIp(ip)
 		content.postTitle = 'My first time'
 		//content.postBody = 'This is a test comment.' // unsure
 		//content.postBody = 'This is my first baby ever.'
@@ -100,5 +103,8 @@ Please find attached your Advice containing information on your transactions of 
 		client.destroy()
 	}
 	
+	private String randomIp() {
+		return (RandomUtils.nextInt(254) + 1) + '.' + (RandomUtils.nextInt(254) + 1) + '.' + (RandomUtils.nextInt(254) + 1) + '.' + (RandomUtils.nextInt(254) + 1)
+	}
 
 }
